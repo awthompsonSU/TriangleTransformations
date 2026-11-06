@@ -32,16 +32,20 @@ For classroom grading, ask Codex to design a secure optional submission backend 
 
 ## Website verification
 
-The website keeps the original game's single-transformation coordinate matching:
+The website keeps the original game's coordinate matching, with Easy (one-step)
+and Hard (two-step) modes:
 translations, reflections in horizontal/vertical lines, and rotations about the
 origin. It accepts equivalent rotation descriptions and matches corresponding
-vertices, rather than only comparing the transformation's name. The Java game's
-optional two-transformation mode remains outside the web version's documented
-scope. The original Java source is preserved unchanged.
+vertices, rather than only comparing the transformation's name. Hard mode follows the Java game's ordered two-transformation flow, with a green
+intermediate triangle after Step 1. The original Java source is preserved unchanged.
 
 The website uses **first-attempt scoring**, rather than the Java game's eventual
 correct-answer totals. An invalid form does not count; a wrong answer or reveal
-counts once; retries cannot increase the first-attempt score. Scores persist in
+counts once; retries cannot increase the first-attempt score. In Hard mode, the
+first complete pair is scored; resetting Step 1 immediately counts the problem
+as missed, even before Step 2 is submitted. Repeated resets never count the same
+problem more than once. Hard totals have their own row and are included once in
+the overall total, while the three transformation rows track Easy problems. Scores persist in
 that browser but are not independently verified grades.
 
 To check the site manually:
@@ -75,6 +79,7 @@ Automated checks (no build step or test dependency is required to use the site):
 ```sh
 node tests/geometry.cjs
 python3 tests/browser.py
+python3 tests/hard_browser.py
 ```
 
 The geometry checks require Node.js and test 30,000 generated problems, all six
@@ -93,3 +98,44 @@ URL, eight viewport widths from 320 to 1366 pixels, offline gameplay, direct-fil
 blocked browser storage. If managed Chromium blocks file URLs, that check is
 reported as skipped and offline gameplay is tested after loading from localhost. Email URL testing intercepts the external mail launch;
 it does not send messages. Tests leave application source and student data alone.
+
+
+## Hard mode: two transformations
+
+Select **Hard — 2 transformations** before starting, or select it under Practice
+settings for the next problem. The current mode appears above the coordinate grid.
+Mode and focus changes never replace the current problem midway through an answer.
+
+1. Enter a first transformation and select **Apply first transformation**. The
+   resulting green triangle is your intermediate result; the game does not tell
+   you whether it matches a hidden first step. The scoreboard stays unchanged.
+2. Enter a second transformation and select **Check two-step answer**. The game
+   applies it to the saved Step 1 result and draws the combined result in green.
+   Any valid ordered pair mapping all corresponding vertices onto red is accepted.
+3. If the pair is wrong, retry Step 2. Every retry starts from the same Step 1
+   result, rather than compounding the previous Step 2 guess. The coordinate
+   readout includes Step 1 vertices with a subscript 1 and the latest green result
+   with an asterisk.
+4. To choose a different first step, use **Reset Step 1 (counts as wrong)**.
+   This marks the problem missed immediately and clears the intermediate triangle.
+   Solving it later or resetting again cannot change its first-attempt score.
+5. Revealing the solution shows one valid ordered pair and counts the problem as
+   missed. Next problem clears both steps and the green triangle.
+
+Generated Hard problems use two different transformation categories, as in the
+Java game, with original, intermediate, and final triangles inside the grid.
+The generator excludes problems solvable by a single supported transformation.
+The practice focus selects the generated **first** category; the second category
+is chosen from the other two. Student answers are checked by their geometric
+result, rather than requiring the particular generated sequence. Off-grid student
+guesses remain valid inputs: the display clips them and coordinates give their
+full values.
+
+The geometry suite also checks 6,000 Hard problems, all six ordered category
+pairs, independently calculated compositions, intermediate/final bounds, and
+single-step shortcuts. `tests/hard_browser.py` checks the staged entry flow,
+correct/incorrect pairs, alternative sequences, invalid second inputs, reset
+penalties, retries, reveals, mode changes, CSV/copy reporting, older saved-score
+migration, student reset, and eight desktop/mobile widths. Test dependencies are
+the same as for `tests/browser.py`. The application itself remains a standalone
+static site without test dependencies or a build process.

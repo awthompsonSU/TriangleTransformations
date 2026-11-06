@@ -26,3 +26,35 @@ assert(!m.trianglesMatch(m.applyTransformation(pts,{type:'rotation',degrees:90,d
 assert.equal(m.escapeCsv('=1+1'),'"\'=1+1"');
 assert.equal(m.escapeCsv('A "Student"'),'"A ""Student"""');
 console.log('PASS: exhaustive rotation grid, reflection round trips, incorrect correspondence/direction, CSV escaping');
+
+// Two-step problems must compose in order, stay on-grid at both stages,
+// and require more than one of the supported single transformations.
+const pairs = new Set();
+function independent(points, rule) {
+ return points.map(([x,y]) => {
+  if(rule.type==='translation') return [x+rule.dx,y+rule.dy];
+  if(rule.type==='reflection') return rule.axis==='x' ? [2*rule.value-x,y] : [x,2*rule.value-y];
+  const a=rule.degrees*Math.PI/180*(rule.direction==='cw'?-1:1);
+  return [Math.round(x*Math.cos(a)-y*Math.sin(a)),Math.round(x*Math.sin(a)+y*Math.cos(a))];
+ });
+}
+for(const type of ['translation','reflection','rotation'])for(let i=0;i<2000;i++) {
+ const p=m.generateHardProblem(type);
+ assert.equal(p.rules[0].type,type);
+ assert.notEqual(p.rules[0].type,p.rules[1].type);
+ pairs.add(p.rules.map(r=>r.type).join(' then '));
+ assert(m.trianglesMatch(p.intermediate,independent(p.original,p.rules[0])));
+ assert(m.trianglesMatch(p.transformed,independent(p.intermediate,p.rules[1])));
+ for(const points of [p.original,p.intermediate,p.transformed]){
+  assert(points.flat().every(v=>Number.isInteger(v)&&Math.abs(v)<=15));
+  assert.equal(m.twiceArea(points),m.twiceArea(p.original));
+ }
+ assert(!m.mapsInOneStep(p.original,p.transformed));
+ // Enumerate all supported one-step candidates independently of the shortcut detector.
+ const possible=[...Array.from({length:31},(_,i)=>i-15).flatMap(value=>['x','y'].map(axis=>({type:'reflection',axis,value}))),
+ ...[90,180,270].map(degrees=>({type:'rotation',degrees,direction:'ccw'})),
+ {type:'translation',dx:p.transformed[0][0]-p.original[0][0],dy:p.transformed[0][1]-p.original[0][1]}];
+ assert(possible.every(r=>!m.trianglesMatch(independent(p.original,r),p.transformed)));
+}
+assert.equal(pairs.size,6);
+console.log('PASS: 6,000 hard problems, all six ordered category pairs, independent composition, bounds and no one-step shortcuts');
