@@ -1,0 +1,5 @@
+I am developing a high-school/college classroom game called Triangle Transformations. This folder contains a working first draft in website/ and the original Java Swing code in legacy-java/ for comparison. Please read AGENTS.md and both READMEs first.
+
+First, inspect the current web app and the Java reference. Do not rewrite the entire game or add a backend yet. Check the transformation mathematics, answer checking, random problem generation, scoring rules, student reset, CSV/email reporting, and desktop/mobile usability. Identify concrete bugs or ambiguous questions, add useful automated tests where feasible, and fix clear errors while preserving the existing design and features.
+
+Afterward, summarize what was verified, what changed, how to run the tests, and any remaining issues. Keep the site usable from an ordinary HTML homepage and do not add an account system or automatic email collection without asking me.
