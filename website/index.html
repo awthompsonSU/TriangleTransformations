@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#7d1515">
+  <meta name="description" content="Practice translations, reflections, and rotations of triangles on the coordinate plane.">
+  <title>Triangle Transformations | Interactive Geometry Game</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-row">
+        <div class="brand-icon" aria-hidden="true"><svg viewBox="0 0 42 42"><path d="M9 30L20 7L34 29Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M13 33L29 17L34 34Z" fill="none" stroke="#fdb728" stroke-width="2.4" stroke-linejoin="round"/></svg></div>
+        <div><span class="eyebrow">INTERACTIVE GEOMETRY LAB</span><h1>Triangle Transformations</h1><p>See the transformation. Work out the rule. Test your answer.</p></div>
+      </div>
+      <span class="header-pill">Works offline <span aria-hidden="true">●</span></span>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section id="startPanel" class="start-panel card" aria-labelledby="startTitle">
+      <div class="intro-copy">
+        <span class="section-kicker">BEFORE YOU BEGIN</span>
+        <h2 id="startTitle">Ready to transform?</h2>
+        <p>Enter your name to start. A black triangle will appear with its red image. Your job is to identify the transformation that moved it.</p>
+        <div class="intro-chips"><span>↗ Translations</span><span>⇅ Reflections</span><span>↻ Rotations</span></div>
+      </div>
+      <form id="startForm" class="start-form">
+        <label for="studentName">Student name <span class="required">*</span></label>
+        <input id="studentName" type="text" autocomplete="name" maxlength="80" required placeholder="First and last name" aria-describedby="nameHelp">
+        <p id="nameHelp" class="field-help">Scores are saved on this device, not sent to a server.</p>
+        <button type="submit" class="button button-primary button-full">Start playing <span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+
+    <div id="gameArea" hidden>
+      <div class="session-bar">
+        <div><span class="section-kicker">STUDENT SESSION</span><h2>Welcome, <span id="displayName"></span></h2></div>
+        <div class="session-actions"><button type="button" id="newStudentBtn" class="button button-quiet">New student / clear scores</button></div>
+      </div>
+
+      <section class="stats-grid" aria-label="Overall score">
+        <article class="stat-card"><span class="stat-label">FIRST-TRY CORRECT</span><strong id="overallCorrect">0</strong><span class="stat-foot">Problems right on the first answer</span></article>
+        <article class="stat-card"><span class="stat-label">QUESTIONS ANSWERED</span><strong id="overallAttempted">0</strong><span class="stat-foot">Includes revealed solutions</span></article>
+        <article class="stat-card"><span class="stat-label">ACCURACY</span><strong id="overallAccuracy">—</strong><span class="stat-foot">First-try percentage</span></article>
+      </section>
+
+      <div class="workspace">
+        <section class="graph-card card" aria-labelledby="graphTitle">
+          <div class="card-heading graph-heading">
+            <div><span class="section-kicker">THE COORDINATE PLANE</span><h2 id="graphTitle">What happened to the triangle?</h2></div>
+            <div id="problemNumber" class="problem-number">Problem 1</div>
+          </div>
+          <div class="legend"><span><i class="legend-line legend-black"></i> Original triangle</span><span><i class="legend-line legend-red"></i> Transformed triangle</span></div>
+          <div class="graph-frame"><svg id="coordinatePlane" viewBox="0 0 760 760" role="img" aria-label="Cartesian coordinate grid showing an original black triangle and a transformed red triangle. Horizontal axis x and vertical axis y run from negative 15 to positive 15."></svg></div>
+          <div class="graph-footer"><p>Find a <strong>single transformation</strong> that maps the black triangle onto the red triangle. Corresponding vertices use matching letters.</p><label class="toggle-label"><input type="checkbox" id="showCoords"><span>Show vertex coordinates</span></label></div><div id="coordinatesPanel" class="coordinates-panel" hidden aria-live="polite"></div>
+        </section>
+
+        <aside class="control-stack">
+          <section class="answer-card card" aria-labelledby="answerTitle">
+            <div class="card-heading"><div><span class="section-kicker">YOUR ANSWER</span><h2 id="answerTitle">Choose a transformation</h2></div></div>
+            <form id="answerForm" novalidate>
+              <fieldset class="transform-picks"><legend class="visually-hidden">Transformation category</legend>
+                <label class="transform-choice"><input type="radio" name="transformType" value="translation"><span class="choice-mark">↗</span><span>Translation</span></label>
+                <label class="transform-choice"><input type="radio" name="transformType" value="reflection"><span class="choice-mark">⇅</span><span>Reflection</span></label>
+                <label class="transform-choice"><input type="radio" name="transformType" value="rotation"><span class="choice-mark">↻</span><span>Rotation</span></label>
+              </fieldset>
+              <p id="answerPrompt" class="selection-prompt">Choose one of the three transformations above to enter your answer.</p>
+              <div id="translationFields" class="conditional-fields" hidden><p class="field-instruction">How far did the triangle move?</p><div class="field-pair"><div><label for="translateX">Horizontal (x)</label><input id="translateX" type="number" step="1" min="-30" max="30" placeholder="e.g. 4"><span class="field-help">+ right, − left</span></div><div><label for="translateY">Vertical (y)</label><input id="translateY" type="number" step="1" min="-30" max="30" placeholder="e.g. -2"><span class="field-help">+ up, − down</span></div></div></div>
+              <div id="reflectionFields" class="conditional-fields" hidden><p class="field-instruction">Which line is the mirror line?</p><div class="field-pair"><div><label for="reflectAxis">Line direction</label><select id="reflectAxis"><option value="x">Vertical: x =</option><option value="y">Horizontal: y =</option></select></div><div><label for="reflectValue">Line value</label><input id="reflectValue" type="number" step="1" min="-15" max="15" placeholder="e.g. 2"></div></div></div>
+              <div id="rotationFields" class="conditional-fields" hidden><p class="field-instruction">Rotate around the origin (0, 0).</p><div class="field-pair"><div><label for="rotateDegrees">Angle</label><select id="rotateDegrees"><option value="">Choose angle</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div><div><label for="rotateDirection">Direction</label><select id="rotateDirection"><option value="ccw">Counterclockwise</option><option value="cw">Clockwise</option></select></div></div><span class="field-help">For 180°, either direction is correct.</span></div>
+              <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+              <div class="answer-actions"><button type="submit" id="checkBtn" class="button button-primary button-full">Check my answer</button><button type="button" id="nextBtn" class="button button-secondary button-full" disabled>Next problem →</button></div>
+              <button type="button" id="revealBtn" class="text-action">Show the solution (counts as missed)</button>
+            </form>
+          </section>
+          <section class="card settings-card" aria-labelledby="practiceTitle">
+            <div class="card-heading compact-heading"><div><span class="section-kicker">PRACTICE SETTINGS</span><h2 id="practiceTitle">Choose your focus</h2></div></div>
+            <label for="practiceType">Problems to generate</label><select id="practiceType"><option value="all">All transformations (mixed)</option><option value="translation">Translations only</option><option value="reflection">Reflections only</option><option value="rotation">Rotations only</option></select><p class="field-help">The selection applies to your next problem. Mixed practice rotates evenly through the three categories.</p>
+          </section>
+          <section class="card score-card" aria-labelledby="scoreTitle">
+            <div class="card-heading compact-heading"><div><span class="section-kicker">YOUR PROGRESS</span><h2 id="scoreTitle">Scores by transformation</h2></div></div>
+            <table class="score-table"><thead><tr><th scope="col">Type</th><th scope="col" class="num">Right</th><th scope="col" class="num">Answered</th><th scope="col" class="num">Accuracy</th></tr></thead><tbody><tr><th scope="row">Translation</th><td id="translationCorrect" class="num">0</td><td id="translationAttempted" class="num">0</td><td id="translationAccuracy" class="num">—</td></tr><tr><th scope="row">Reflection</th><td id="reflectionCorrect" class="num">0</td><td id="reflectionAttempted" class="num">0</td><td id="reflectionAccuracy" class="num">—</td></tr><tr><th scope="row">Rotation</th><td id="rotationCorrect" class="num">0</td><td id="rotationAttempted" class="num">0</td><td id="rotationAccuracy" class="num">—</td></tr></tbody></table>
+            <p class="field-help score-note">Each problem is scored on the <strong>first answer only</strong>. You may retry to learn, but retries do not change your score.</p>
+          </section>
+          <section class="card report-card" aria-labelledby="reportTitle">
+            <div class="card-heading compact-heading"><div><span class="section-kicker">TEACHER REPORT</span><h2 id="reportTitle">Share your results</h2></div></div>
+            <label for="teacherEmail">Teacher email address</label><input id="teacherEmail" type="email" placeholder="teacher@school.edu" autocomplete="off"><p class="field-help">Opens your email application with a prepared report. You must review it and click Send yourself.</p>
+            <div class="report-actions"><button type="button" id="emailBtn" class="button button-secondary">Prepare email</button><button type="button" id="copyBtn" class="button button-quiet">Copy report</button><button type="button" id="csvBtn" class="button button-quiet">Download CSV</button></div>
+            <p class="report-status" id="reportStatus" role="status" aria-live="polite"></p>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+  <footer class="page-footer">Triangle Transformations · A browser-based classroom practice activity · No account or internet connection required</footer>
+</body>
+</html>
