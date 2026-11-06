@@ -2,3 +2,9 @@
 @media(prefers-reduced-motion:reduce){.button{transition:none}}
 
 .coordinates-panel{margin-top:12px;border:1px solid #dce1e5;border-radius:9px;background:#f8f9fb;padding:12px 15px;font-size:.82rem}.coordinates-panel strong{display:block;margin-bottom:6px}.coord-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.coord-col{display:flex;flex-direction:column;gap:3px}.coord-col span{font-variant-numeric:tabular-nums}.coord-black{color:#20242a}.coord-red{color:#be2234}
+
+/* Dashed, unfilled guesses leave both reference triangles visible on a match. */
+.legend-green{height:0;border-top:3px dashed #16803c;background:none;border-radius:0}
+.coord-green{color:#126b33}
+
+.translation-icon{width:1em;height:1em;vertical-align:-.12em}
