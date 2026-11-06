@@ -42,7 +42,17 @@ HOW THE GAME WORKS
 - Rotations: 90, 180, 270 degrees, clockwise or counterclockwise, about (0,0).
 - Equivalent descriptions, such as 90 degrees clockwise and 270 degrees
   counterclockwise, are both accepted if they map all vertices exactly.
-- The optional "Show vertex coordinates" toggle provides a learning aid.
+- After each valid submitted guess, a green dashed triangle shows where that
+  transformation sends the original black triangle. Its vertices are A*, B*, C*.
+  Each retry replaces the previous green triangle; it does not transform the
+  previous guess. The overlay clears for each new problem.
+- Correct guesses overlay the red target; dashed edges and hollow vertex markers
+  keep the red triangle visible. Invalid/incomplete answers do not change the
+  last valid guess or count as attempts.
+- If a guess extends outside the -15 to 15 grid, only its visible portion is
+  drawn. A message explains this; the coordinate readout shows its full position.
+- The optional "Show vertex coordinates" toggle provides a learning aid and
+  includes the green guessed vertices after an answer is submitted.
 - Mixed mode distributes the three types evenly in shuffled groups.
 - Practice settings can limit newly generated problems to one category.
 

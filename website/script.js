@@ -143,6 +143,7 @@
     const showCoords = $('showCoords');
     let state = freshState();
     let currentProblem = null;
+    let guessPoints = null;
     let firstSubmitted = false;
     let solved = false;
     let mixedBag = [];
@@ -209,6 +210,7 @@
 
     function newProblem() {
       currentProblem = generateProblem(pickCategory());
+      guessPoints = null;
       firstSubmitted = false;
       solved = false;
       state.served += 1;
@@ -258,6 +260,22 @@
       // Draw red first so the original outline remains distinguishable where shapes overlap.
       drawTriangle(currentProblem.transformed, '#d62839', '#d62839', true);
       drawTriangle(currentProblem.original, '#18212b', '#111820', false);
+      const guessStatus = $('guessStatus');
+      guessStatus.hidden = !guessPoints;
+      svg.setAttribute('aria-label', 'Cartesian coordinate grid from −15 to 15, with horizontal x and vertical y axes, showing the black original and red transformed triangle.' +
+        (guessPoints ? ' Your last submitted guess is the green dashed triangle, labeled A*, B*, C*.' : ''));
+      if (guessPoints) {
+        // Clip out-of-range guesses to the actual coordinate plane, without changing their coordinates.
+        const defs = svgNode('defs');
+        const clip = svgNode('clipPath', { id: 'guessClip' });
+        clip.appendChild(svgNode('rect', { x: margin, y: margin, width: 2 * BOUNDS * step, height: 2 * BOUNDS * step }));
+        defs.appendChild(clip);
+        svg.appendChild(defs);
+        drawTriangle(guessPoints, '#16803c', 'none', false, true);
+        const outside = guessPoints.some(point => point.some(value => Math.abs(value) > BOUNDS));
+        guessStatus.textContent = 'Your last submitted guess is green and dashed (A*, B*, C*).' +
+          (outside ? ' Some or all of your guess is outside the displayed −15 to 15 grid. Show vertex coordinates to see its full position.' : '');
+      }
       const coordPanel = $('coordinatesPanel');
       if (showCoords.checked) {
         coordPanel.hidden = false;
@@ -267,12 +285,14 @@
         coordPanel.appendChild(title);
         const columns = document.createElement('div');
         columns.className = 'coord-pair';
-        [[currentProblem.original, false], [currentProblem.transformed, true]].forEach(([pts, red]) => {
+        const sets = [[currentProblem.original, 'black', ''], [currentProblem.transformed, 'red', '′']];
+        if (guessPoints) sets.push([guessPoints, 'green', '*']);
+        sets.forEach(([pts, color, suffix]) => {
           const col = document.createElement('div');
-          col.className = `coord-col ${red ? 'coord-red' : 'coord-black'}`;
+          col.className = `coord-col coord-${color}`;
           for (let i = 0; i < 3; i++) {
             const row = document.createElement('span');
-            row.textContent = `${'ABC'[i]}${red ? '′' : ''} = (${pts[i][0]}, ${pts[i][1]})`;
+            row.textContent = `${'ABC'[i]}${suffix} = (${pts[i][0]}, ${pts[i][1]})`;
             col.appendChild(row);
           }
           columns.appendChild(col);
@@ -283,25 +303,29 @@
       }
     }
 
-    function drawTriangle(points, stroke, fill, red) {
+    function drawTriangle(points, stroke, fill, red, guessed = false) {
+      const group = svgNode('g', { id: guessed ? 'guessTriangle' : red ? 'transformedTriangle' : 'originalTriangle' });
+      if (guessed) group.setAttribute('clip-path', 'url(#guessClip)');
+      svg.appendChild(group);
       const vertexCoordinates = points.map(([x, y]) => `${xCoord(x)},${yCoord(y)}`).join(' ');
-      svg.appendChild(svgNode('polygon', {
+      group.appendChild(svgNode('polygon', {
         points: vertexCoordinates, fill, 'fill-opacity': .13, stroke,
-        'stroke-width': 3.8, 'stroke-linejoin': 'round'
+        'stroke-width': guessed ? 2.8 : 3.8, 'stroke-linejoin': 'round',
+        'stroke-dasharray': guessed ? '10 7' : 'none'
       }));
       points.forEach(([x, y], i) => {
         const px = xCoord(x), py = yCoord(y);
-        const dot = svgNode('circle', { cx: px, cy: py, r: 5.2, fill: stroke, stroke: '#fff', 'stroke-width': 1.5 });
-        dot.appendChild(svgNode('title', {}, `${'ABC'[i]}${red ? ' prime' : ''} (${x}, ${y})`));
-        svg.appendChild(dot);
-        const dx = px > 666 ? -10 : 11;
-        const dy = red ? 24 : -11;
-        svg.appendChild(svgNode('text', {
+        const dot = svgNode('circle', { cx: px, cy: py, r: guessed ? 7.5 : 5.2, fill: guessed ? 'none' : stroke, stroke: guessed ? stroke : '#fff', 'stroke-width': guessed ? 2 : 1.5 });
+        dot.appendChild(svgNode('title', {}, `${'ABC'[i]}${guessed ? ' guess' : red ? ' prime' : ''} (${x}, ${y})`));
+        group.appendChild(dot);
+        const dx = guessed ? (px > 100 ? -11 : 11) : px > 666 ? -10 : 11;
+        const dy = guessed ? -34 : red ? 24 : -11;
+        group.appendChild(svgNode('text', {
           x: px + dx, y: Math.max(24, Math.min(743, py + dy)),
           'font-size': 21, 'font-weight': 800, 'font-family': 'sans-serif',
           'paint-order': 'stroke', stroke: 'white', 'stroke-width': 4,
           fill: stroke, 'text-anchor': dx < 0 ? 'end' : 'start'
-        }, `${'ABC'[i]}${red ? '′' : ''}`));
+        }, `${'ABC'[i]}${guessed ? '*' : red ? '′' : ''}`));
       });
     }
 
@@ -381,7 +405,9 @@
         showFeedback('Complete your answer', error.message, 'info');
         return;
       }
-      const correct = trianglesMatch(applyTransformation(currentProblem.original, guess), currentProblem.transformed);
+      guessPoints = applyTransformation(currentProblem.original, guess);
+      drawBoard();
+      const correct = trianglesMatch(guessPoints, currentProblem.transformed);
       const onFirstTry = !firstSubmitted;
       recordFirstAnswer(correct, guess);
       nextBtn.disabled = false;
@@ -392,7 +418,7 @@
           : `You found it! ${describeRule(guess)} This problem remains marked incorrect for first-try scoring.`, 'good');
       } else {
         showFeedback(onFirstTry ? 'Not quite — try again.' : 'Still not a match.',
-          'Your first answer is scored. You can adjust your transformation and check again, show the solution, or move to the next problem.', 'bad');
+          'The green dashed triangle shows where your guess sends the original. Your first answer is scored. You can adjust your transformation and check again, show the solution, or move to the next problem.', 'bad');
       }
     }
 
@@ -448,16 +474,24 @@
       const report = makeReport();
       try {
         if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(report);
-        } else {
-          const temp = document.createElement('textarea');
+          try {
+            await navigator.clipboard.writeText(report);
+            $('reportStatus').textContent = 'Report copied. Paste it into an email, document, or learning management system.';
+            return;
+          } catch (_) { /* Try the legacy path if clipboard permission is denied. */ }
+        }
+        const previousFocus = document.activeElement;
+        const temp = document.createElement('textarea');
+        try {
           temp.value = report;
           temp.style.position = 'fixed';
           temp.style.left = '-9999px';
           document.body.appendChild(temp);
           temp.select();
           if (!document.execCommand('copy')) throw new Error('Clipboard unavailable');
+        } finally {
           temp.remove();
+          if (previousFocus) previousFocus.focus({ preventScroll: true });
         }
         $('reportStatus').textContent = 'Report copied. Paste it into an email, document, or learning management system.';
       } catch (_) {
@@ -502,7 +536,11 @@
     answerForm.querySelectorAll('input[name="transformType"]').forEach(el => el.addEventListener('change', toggleFields));
     showCoords.addEventListener('change', drawBoard);
     revealBtn.addEventListener('click', revealAnswer);
-    nextBtn.addEventListener('click', newProblem);
+    nextBtn.addEventListener('click', () => {
+      newProblem();
+      // The Next button becomes disabled; move focus to the new question.
+      $('graphTitle').focus();
+    });
     practiceType.addEventListener('change', () => {
       state.focus = practiceType.value;
       mixedBag = [];
@@ -518,6 +556,7 @@
       state = freshState();
       mixedBag = [];
       currentProblem = null;
+      guessPoints = null;
       startForm.reset();
       startPanel.hidden = false;
       gameArea.hidden = true;
