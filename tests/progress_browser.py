@@ -70,15 +70,16 @@ try:
                 window.copyHadUserGesture=navigator.userActivation.isActive;
                 return write(items);
             };
-            const render=window.html2canvas;
-            window.html2canvas=(element, options)=>{
-                window.capturedElement=element.id;
-                return render(element,options);
+            window.reportDrawnText=[];
+            const fillText=CanvasRenderingContext2D.prototype.fillText;
+            CanvasRenderingContext2D.prototype.fillText=function(text,x,y){
+                window.reportDrawnText.push({text:String(text),x,y});
+                return fillText.call(this,text,x,y);
             };
         }''')
 
         def wait_for_copy():
-            page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress screenshot copied')")
+            page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress image copied')")
             assert page.locator('#copyProgressBtn').is_enabled()
             assert page.locator('#copyProgressBtn').get_attribute('aria-busy') is None
 
@@ -123,7 +124,16 @@ try:
         wait_for_copy()
         original_png = read_png()
         assert page.evaluate('window.copyHadUserGesture')
-        assert page.evaluate('window.capturedElement') == 'progressCapture'
+        assert page.evaluate('typeof window.html2canvas') == 'undefined'
+        assert page.locator('script[src]').evaluate_all("els=>els.map(el=>el.getAttribute('src'))") == ['script.js']
+        drawn = page.evaluate('window.reportDrawnText')
+        assert any(item['text'] == 'Zoë O’Connor <A&B>' for item in drawn)
+        assert any(item['text'] == 'As of ' + timestamp for item in drawn)
+        for label, values in {'Translation':['10','12','83%'], 'Reflection':['2','4','50%'],
+                              'Rotation':['3','5','60%'], 'Hard (two steps)':['7','10','70%'],
+                              'Overall':['22','31','71%']}.items():
+            row = next(item for item in drawn if item['text'] == label)
+            assert [item['text'] for item in drawn if item['y'] == row['y']] == [label, *values]
         assert page.locator('#progressCapture button, #progressCapture figure').count() == 0
         assert page.evaluate("localStorage.getItem('triangle-transformations-web-v1')") == state_before
         assert page.locator('#progressPreview').is_hidden()
@@ -144,7 +154,7 @@ try:
         page.wait_for_function("document.getElementById('progressPreviewImage').naturalWidth===1280")
         assert 'blocked' in page.locator('#reportStatus').inner_text()
         assert page.locator('#copyProgressBtn').is_enabled()
-        assert not page.evaluate("document.querySelector('iframe.html2canvas-container')")
+        assert page.locator('iframe').count() == 0
 
         # Copying without an image clipboard API, or without HTTPS, still offers the image.
         page.evaluate("() => {Object.defineProperty(navigator,'clipboard',{value:undefined,configurable:true});}")
@@ -161,7 +171,7 @@ try:
 
         # A rendering failure is caught, leaves the game usable, and does not retain
         # the old image or claim copying succeeded.
-        page.evaluate("() => {window.html2canvas=async()=>{throw new Error('Render failed')};}")
+        page.evaluate("() => {HTMLCanvasElement.prototype.getContext=()=>null;}")
         page.locator('#copyProgressBtn').click()
         page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Could not create')")
         assert page.locator('#progressPreview').is_hidden()
@@ -172,7 +182,7 @@ try:
         assert page.locator('#copyProgressBtn').is_enabled()
         page.reload()
 
-        # The bundled renderer works with network access turned off after initial load.
+        # The native renderer works with network access turned off after initial load.
         context.set_offline(True)
         page.locator('#copyProgressBtn').click()
         wait_for_copy()
@@ -186,8 +196,19 @@ try:
         page.reload()
         page.set_viewport_size({'width': 320, 'height': 900})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        page.evaluate('''() => {
+            window.wrappedReportText=[];
+            const draw=CanvasRenderingContext2D.prototype.fillText;
+            CanvasRenderingContext2D.prototype.fillText=function(text,x,y){
+                window.wrappedReportText.push(String(text));
+                return draw.call(this,text,x,y);
+            };
+        }''')
         page.locator('#copyProgressBtn').click()
         wait_for_copy()
+        words=page.evaluate('window.wrappedReportText')
+        timestamp_index=next(i for i,text in enumerate(words) if text.startswith('As of '))
+        assert ''.join(words[2:timestamp_index]) == long_name
         assert page.locator('#progressStudentName').inner_text() == long_name
         read_png()
 
@@ -195,10 +216,13 @@ try:
         # previous student's fallback report when the old promise finishes.
         page.evaluate('''() => {
             navigator.clipboard.write=async()=>{throw new Error('Denied')};
-            const render=window.html2canvas;
-            window.html2canvas=(element,options)=>new Promise((resolve,reject)=>{
-                window.finishOldCapture=()=>render(element,options).then(resolve,reject);
-            });
+            const encode=HTMLCanvasElement.prototype.toBlob;
+            HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){
+                const canvas=this;
+                window.finishOldCapture=()=>new Promise(resolve=>{
+                    encode.call(canvas,blob=>{callback(blob);resolve();},type,quality);
+                });
+            };
         }''')
         page.locator('#copyProgressBtn').click()
         assert page.locator('#copyProgressBtn').is_disabled()

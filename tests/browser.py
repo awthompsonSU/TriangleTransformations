@@ -94,7 +94,7 @@ with sync_playwright() as p:
  assert page.locator('#progressOverallAttempted').inner_text()=='32'
  assert page.locator('#progressOverallAccuracy').inner_text()=='94%'
  page.locator('#copyProgressBtn').click()
- page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress screenshot copied')")
+ page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress image copied')")
  image=page.evaluate("async()=>{const items=await navigator.clipboard.read();const blob=await items[0].getType('image/png');const bitmap=await createImageBitmap(blob);return {type:blob.type,size:blob.size,width:bitmap.width,height:bitmap.height};}")
  assert image['type']=='image/png' and image['size']>10000
  assert image['width']==1280 and image['height']>600

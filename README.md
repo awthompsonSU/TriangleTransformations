@@ -26,7 +26,7 @@ If you upload just the contents of `website/` to a folder named `TriangleTransfo
 
 - Opening this project in Codex does not automatically carry over this ChatGPT conversation. The included `AGENTS.md` and starter prompt explain the goals and design decisions.
 - Scores are currently stored only in a local browser, not centrally.
-- Copy progress screenshot puts a PNG image on the clipboard; students paste it into their assignment, document, or email themselves. No scores are sent automatically.
+- Copy progress image puts a PNG image on the clipboard; students paste it into their assignment, document, or email themselves. No scores are sent automatically.
 
 For classroom grading, ask Codex to design a secure optional submission backend rather than treating localStorage totals as authoritative grades.
 
@@ -67,7 +67,7 @@ To check the site manually:
    from the original black vertices. A correct guess should coincide with red.
    Try translating by 30 horizontally and 30 vertically to check the off-grid
    message and full guessed coordinates. Next problem should clear the overlay.
-6. Select **Copy progress screenshot** after answering a problem. Paste into an
+6. Select **Copy progress image** after answering a problem. Paste into an
    image-capable document, email, or assignment editor. Confirm the image contains
    the student name, timestamp with local time zone, category scores, Hard score,
    and overall total. The copy button itself is excluded. If automatic copying
@@ -148,11 +148,12 @@ static site without test dependencies or a build process.
 ## Progress screenshots
 
 The previous email, text-report, teacher-email, and CSV controls have been
-replaced by **Copy progress screenshot** and **Download progress JPEG** buttons in Your Progress. The PNG
+replaced by **Copy progress image** and **Download progress JPEG** buttons in Your Progress. The PNG
 contains the student's name, current date/time including their browser's local
 time zone, all four score rows, an overall total, and the first-attempt scoring
-note. It is a screenshot of the actual progress section, rendered at a consistent
-1280-pixel image width so reports remain readable when copied from a phone.
+note. The browser draws a report image directly with its built-in Canvas API,
+using a consistent 1280-pixel image width so it remains readable on a phone.
+It contains the same information as Your Progress, with a separately drawn layout.
 The timestamp refreshes on score updates and on every copy. It comes from the
 student's device clock and is not an independently verified timestamp.
 
@@ -163,10 +164,10 @@ shown for manual copying; if image creation fails, the page explains how to take
 a screenshot. Some school-managed browsers may block clipboard access. No text
 report, email launch, automatic submission, or CSV download remains.
 
-Rendering uses a locally bundled copy of html2canvas 1.4.1 with its MIT license
-in `website/vendor/`. There is no CDN request or new backend. Upload the **entire
-website folder, including vendor/** when moving the app to another host. The
-app still needs no build process and can be used offline after its files load.
+Rendering uses native Canvas 2D drawing and image encoding. There is no external
+library, CDN request, dependency folder, or backend. Upload `index.html`,
+`style.css`, and `script.js` from `website/` when moving the app to another host.
+The app still needs no build process and can be used offline after its files load.
 Old stored teacher-email fields are ignored and removed on the next local save;
 existing names, mode preferences, and scores remain available.
 
@@ -180,7 +181,7 @@ as the other browser tests.
 
 ### Download a JPEG
 
-**Download progress JPEG** saves the same progress section as a high-quality
+**Download progress JPEG** saves the same generated progress report as a high-quality
 `.jpg` file with a white background. The image includes the student's name,
 current timestamp/time zone, scores, and overall total. Its filename includes a
 sanitized student name and a timestamp. Like copying, downloading requires at
@@ -196,3 +197,19 @@ compatibility; the download button creates a real JPEG, not a renamed PNG.
 `tests/progress_browser.py` also checks JPEG signatures and browser decoding,
 image dimensions, filenames, failure recovery, download without clipboard/HTTPS,
 offline download, and cancelling downloads when the student changes.
+
+
+### Trying the Canvas version and going back
+
+The Canvas renderer changes only how report images are created; the game and
+saved-score format are unchanged. Review the dedicated pull request before
+merging it. To try it first, download that branch's ZIP from GitHub and serve its
+`website/` folder locally (for example, `python3 -m http.server 8000`).
+
+The previous library-based version is preserved at Git commit
+`7925d3dced0800e964b14fa1380199897b3e1e39` (use the full parent commit shown in the Canvas pull request if
+needed). Before merging, the live site is unaffected. After merging, reverting
+the Canvas pull request restores the former renderer and its vendor files;
+GitHub Pages will publish the reverted version automatically. This does not
+require changing stored scores. For a school-hosted copy, replace the uploaded
+website files with the previous version, including its `vendor/` folder.
