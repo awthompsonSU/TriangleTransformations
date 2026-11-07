@@ -9,7 +9,6 @@ FILES
 index.html  — webpage structure
 style.css   — appearance and responsive layout
 script.js   — triangle generation, geometry, answer checking, scoring, image reports
-vendor/     — bundled html2canvas 1.4.1 renderer and MIT license
 
 QUICK START
 -----------
@@ -18,13 +17,14 @@ QUICK START
 3. Double-click index.html to open the game in your web browser.
 4. Enter a student name and select Start playing.
 
-No Java, build process, or backend server is required. The image renderer is
-bundled locally in vendor/. The game works offline after its files are loaded.
+No Java, build process, backend server, or third-party library is required.
+Progress images use the browser's built-in Canvas API. The game works offline
+after its files are loaded.
 
 HOST IT AND LINK IT FROM YOUR HOMEPAGE
 --------------------------------------
 Upload the entire TriangleTransformationsWeb folder to your website. Keep
-index.html, style.css, script.js and the vendor/ folder together. From an HTML
+index.html, style.css and script.js together. From an HTML
 homepage one directory above that folder, add:
 
 <a href="TriangleTransformationsWeb/index.html">Triangle Transformations Game</a>
@@ -83,15 +83,16 @@ where browser policy permits. The program has no accounts or remote database.
 On shared devices, students should copy their progress screenshot first, then
 use "New student / clear scores" before the next person begins.
 
-Use "Copy progress screenshot" in Your Progress to copy a PNG image containing:
+Use "Copy progress image" in Your Progress to copy a PNG image containing:
   - The student's name and the current date/time with local time zone.
   - Easy category scores, the Hard (two steps) score, and an overall total.
   - The first-attempt scoring explanation.
 Paste the image into an assignment editor, document, or email that accepts images.
-Alternatively, select "Download progress JPEG" to save the same section as a
+Alternatively, select "Download progress JPEG" to save the same report as a
 high-quality .jpg image. The filename includes the student name and a timestamp.
 Downloading does not require clipboard permission.
-The screenshot has a consistent readable size even when copied from a phone.
+The generated report image has a consistent readable size even on a phone.
+It matches the Progress information, using its own Canvas-drawn layout.
 At least one problem must be scored before copying.
 
 Automatic image copying needs HTTPS or localhost and browser Clipboard API support.
@@ -102,7 +103,8 @@ shows instructions instead of claiming that a copy succeeded.
 
 The previous email, teacher-email, copy-text, and CSV controls have been removed.
 The app never sends scores automatically. Rendering happens on the device using
-the bundled renderer; there are no third-party requests for screenshots.
+native Canvas drawing and image encoding; there are no external libraries
+or third-party requests for image creation.
 For formal graded assignments, these browser-generated scores and device-clock
 timestamps can be altered and are not independently verified.
 
@@ -122,7 +124,7 @@ Mode selection and scores are saved locally, preserving older Easy-mode scores.
 
 WEB HOSTING / PRIVACY NOTES
 ---------------------------
-The website uses only local static files, including its bundled image renderer.
+The website uses only local HTML, CSS, and JavaScript files.
 It has no remote submission endpoint, cookies, trackers, or third-party requests.
 Data is saved in each browser rather than collected centrally. Clearing site
 data or changing devices may erase or hide saved scores. Local file URLs may

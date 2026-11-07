@@ -184,7 +184,7 @@ try:
         assert page.locator('#hardAttempted').inner_text() == '15'
         assert page.locator('#progressOverallAccuracy').inner_text() == '73%'
         page.locator('#copyProgressBtn').click()
-        page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress screenshot copied')")
+        page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress image copied')")
         assert page.evaluate("async () => (await navigator.clipboard.read())[0].types.includes('image/png')")
         page.reload()
         scores(11, 15)

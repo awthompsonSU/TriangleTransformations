@@ -26,8 +26,8 @@ This repository is a browser-based coordinate-geometry practice game adapted fro
 - Store name and progress locally as currently implemented unless asked to add a backend.
 
 ## Teacher reporting and privacy
-- Reporting uses Copy progress screenshot for the clipboard (PNG) and Download progress JPEG for a saved .jpg file: an image of the Progress section with student name, local timestamp/time zone, all four score rows, overall total, and scoring note. Do not restore the retired email/text/CSV controls without a request.
-- Keep image copying, JPEG download, and the manual-preview fallback working. Downloads must be true JPEGs, include a safe filename, and not depend on clipboard access. Bundle the renderer locally with its license; do not send student data to a third party. Preserve the snapshot's identity/scores if state changes during asynchronous capture; never show an old student's fallback image or start an old student's download after a new student begins.
+- Reporting uses Copy progress image for the clipboard (PNG) and Download progress JPEG for a saved .jpg file: a Canvas-drawn report of the Progress information with student name, local timestamp/time zone, all four score rows, overall total, and scoring note. Do not restore the retired email/text/CSV controls without a request.
+- Keep image copying, JPEG download, and the manual-preview fallback working. Downloads must be true JPEGs, include a safe filename, and not depend on clipboard access. Use the native Canvas API, without a third-party renderer; do not send student data to a third party. Preserve the snapshot's identity/scores if state changes during asynchronous capture; never show an old student's fallback image or start an old student's download after a new student begins.
 - Browser-stored scores are user-editable and not tamper-proof; do not present them as verified grades.
 - Do not add a remote collection endpoint, third-party tracking or hard-coded student information without explicit request.
 

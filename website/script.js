@@ -555,33 +555,94 @@
       progressPreviewUrl = null;
     }
 
+    // Draw a report from the frozen score snapshot using only browser APIs.
+    // This deliberately does not depend on the page's layout, viewport or CSS.
     async function renderProgressImage(snapshot, format = 'image/png') {
-      if (typeof window.html2canvas !== 'function') throw new Error('Image renderer unavailable');
-      const canvas = await window.html2canvas($('progressCapture'), {
-        backgroundColor: '#ffffff', scale: 2, logging: false,
-        windowWidth: 1280, windowHeight: 900,
-        onclone: cloned => {
-          const capture = cloned.getElementById('progressCapture');
-          // A consistent readable image, including when copied from a narrow phone.
-          capture.style.width = '640px';
-          capture.style.padding = '24px';
-          capture.style.boxSizing = 'border-box';
-          capture.querySelector('.score-table').style.fontSize = '16px';
-          capture.querySelector('.score-note').style.fontSize = '14px';
-          cloned.getElementById('progressStudentName').textContent = snapshot.name;
-          cloned.getElementById('progressTimestamp').textContent = formatProgressTime(snapshot.at);
-          cloned.getElementById('progressTimestamp').dateTime = snapshot.at.toISOString();
-          for (const key of SCORE_KEYS) {
-            const row = snapshot.stats[key];
-            cloned.getElementById(key + 'Correct').textContent = row.correct;
-            cloned.getElementById(key + 'Attempted').textContent = row.attempted;
-            cloned.getElementById(key + 'Accuracy').textContent = percent(row.correct, row.attempted);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas image creation is unavailable');
+      const width = 640, padding = 24, contentWidth = width - padding * 2;
+      const font = 'system-ui, -apple-system, "Segoe UI", Arial, sans-serif';
+      const ink = '#242733', muted = '#586372', border = '#e3e6ea';
+
+      function wrap(text, size, weight = 400) {
+        ctx.font = `${weight} ${size}px ${font}`;
+        const lines = [];
+        let line = '';
+        for (const word of String(text).trim().split(/\s+/)) {
+          const candidate = line ? `${line} ${word}` : word;
+          if (ctx.measureText(candidate).width <= contentWidth) {
+            line = candidate;
+            continue;
           }
-          cloned.getElementById('progressOverallCorrect').textContent = snapshot.total.correct;
-          cloned.getElementById('progressOverallAttempted').textContent = snapshot.total.attempted;
-          cloned.getElementById('progressOverallAccuracy').textContent = percent(snapshot.total.correct, snapshot.total.attempted);
+          if (line) { lines.push(line); line = ''; }
+          // Split long unspaced names without truncating them or shrinking text.
+          for (const character of Array.from(word)) {
+            if (line && ctx.measureText(line + character).width > contentWidth) {
+              lines.push(line);
+              line = '';
+            }
+            line += character;
+          }
         }
-      });
+        if (line) lines.push(line);
+        return lines;
+      }
+
+      const nameLines = wrap(snapshot.name, 18, 700);
+      const timeLines = wrap(`As of ${formatProgressTime(snapshot.at)}`, 14);
+      const noteLines = wrap($('progressCapture').querySelector('.score-note').textContent, 14);
+      const headerY = 96 + nameLines.length * 26 + 8 + timeLines.length * 21 + 24;
+      const tableBottom = headerY + 34 + (SCORE_KEYS.length + 1) * 46;
+      const height = tableBottom + 18 + noteLines.length * 21 + padding;
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      ctx.scale(2, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.textBaseline = 'top';
+
+      function text(value, x, y, size, weight = 400, color = ink, align = 'left') {
+        ctx.font = `${weight} ${size}px ${font}`;
+        ctx.fillStyle = color;
+        ctx.textAlign = align;
+        ctx.fillText(String(value), x, y);
+      }
+      function rule(y, thick = 1) {
+        ctx.strokeStyle = border;
+        ctx.lineWidth = thick;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+      }
+
+      text('YOUR PROGRESS', padding, 24, 12, 700, '#7d1515');
+      text('Triangle Transformations', padding, 52, 24, 700);
+      let y = 96;
+      for (const line of nameLines) { text(line, padding, y, 18, 700); y += 26; }
+      y += 8;
+      for (const line of timeLines) { text(line, padding, y, 14, 400, muted); y += 21; }
+
+      const columns = [padding, 342, 468, width - padding];
+      ['Type', 'Right', 'Answered', 'Accuracy'].forEach((label, i) =>
+        text(label, columns[i], headerY, 13, 700, muted, i ? 'right' : 'left'));
+      y = headerY + 34;
+      const labels = { ...CATEGORY_NAMES, hard: 'Hard (two steps)' };
+      for (const key of [...SCORE_KEYS, 'overall']) {
+        const overall = key === 'overall';
+        const row = overall ? snapshot.total : snapshot.stats[key];
+        if (overall) rule(y - 12, 2);
+        text(overall ? 'Overall' : labels[key], columns[0], y, 16, 700);
+        text(row.correct, columns[1], y, 16, overall ? 700 : 400, ink, 'right');
+        text(row.attempted, columns[2], y, 16, overall ? 700 : 400, ink, 'right');
+        text(percent(row.correct, row.attempted), columns[3], y, 16, overall ? 700 : 400, ink, 'right');
+        if (!overall) rule(y + 34);
+        y += 46;
+      }
+      rule(tableBottom);
+      y = tableBottom + 18;
+      for (const line of noteLines) { text(line, padding, y, 14, 400, muted); y += 21; }
       return new Promise((resolve, reject) => canvas.toBlob(blob => {
         if (blob && blob.type === format) resolve(blob);
         else reject(new Error('Could not create image'));
@@ -608,7 +669,7 @@
       updateProgressIdentity(at);
       clearProgressPreview();
       setProgressBusy(true);
-      $('reportStatus').textContent = 'Creating your progress screenshot…';
+      $('reportStatus').textContent = 'Creating your progress image…';
       const imagePromise = renderProgressImage(snapshot);
       try {
         if (!window.isSecureContext || !navigator.clipboard || !navigator.clipboard.write || typeof ClipboardItem !== 'function') {
@@ -617,7 +678,7 @@
         // Start the clipboard write during the click. The PNG promise preserves
         // the user gesture in browsers that require it, including Safari.
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePromise })]);
-        if (state === session) $('reportStatus').textContent = 'Progress screenshot copied. Paste the image into your assignment, document, or email.';
+        if (state === session) $('reportStatus').textContent = 'Progress image copied. Paste the image into your assignment, document, or email.';
       } catch (_) {
         try {
           const image = await imagePromise;
@@ -702,7 +763,7 @@
     copyProgressBtn.addEventListener('click', copyProgressScreenshot);
     downloadProgressBtn.addEventListener('click', downloadProgressScreenshot);
     $('newStudentBtn').addEventListener('click', () => {
-      if (!window.confirm('Start a new student session? This removes the current student name and all scores saved on this browser. Copy or download a progress screenshot first if you need the results.')) return;
+      if (!window.confirm('Start a new student session? This removes the current student name and all scores saved on this browser. Copy or download a progress image first if you need the results.')) return;
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* ignore */ }
       state = freshState();
       mixedBag = [];
