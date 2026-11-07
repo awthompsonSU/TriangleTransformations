@@ -179,16 +179,13 @@ try:
             scores(2+i, 6+i)
             assert coordinates('guessTriangle') == coordinates('transformedTriangle')
 
-        with page.expect_download() as download:
-            page.locator('#csvBtn').click()
-        csv = Path(download.value.path()).read_text(encoding='utf-8-sig')
-        assert 'Hard (two steps) Correct' in csv
-        assert '"11","15","73%"' in csv
-        page.locator('#copyBtn').click()
-        page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Report copied')")
-        report = page.evaluate('navigator.clipboard.readText()')
-        assert 'Hard (two steps): 11 correct out of 15' in report
-        assert 'Resetting Step 1 counts' in report
+        assert page.locator('#progressStudentName').inner_text() == 'Hard Mode Student'
+        assert page.locator('#hardCorrect').inner_text() == '11'
+        assert page.locator('#hardAttempted').inner_text() == '15'
+        assert page.locator('#progressOverallAccuracy').inner_text() == '73%'
+        page.locator('#copyProgressBtn').click()
+        page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress screenshot copied')")
+        assert page.evaluate("async () => (await navigator.clipboard.read())[0].types.includes('image/png')")
         page.reload()
         scores(11, 15)
         assert page.locator('#gameMode').input_value() == 'hard'
@@ -234,7 +231,8 @@ try:
         assert page.locator('#overallAttempted').inner_text() == '5'
         assert page.locator('#hardAttempted').inner_text() == '0'
         assert page.locator('#gameMode').input_value() == 'easy'
-        assert page.locator('#teacherEmail').input_value() == 'teacher@example.com'
+        assert page.locator('#progressStudentName').inner_text() == 'Existing Student'
+        assert 'teacherEmail' not in page.evaluate("JSON.parse(localStorage.getItem('triangle-transformations-web-v1'))")
         assert not errors, errors
         browser.close()
         print('PASS: hard mode composition, intermediate overlay, reset penalty, retries, reveals, reports, mode changes, migration and eight viewport widths')
