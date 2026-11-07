@@ -148,7 +148,7 @@ static site without test dependencies or a build process.
 ## Progress screenshots
 
 The previous email, text-report, teacher-email, and CSV controls have been
-replaced by one **Copy progress screenshot** button in Your Progress. The PNG
+replaced by **Copy progress screenshot** and **Download progress JPEG** buttons in Your Progress. The PNG
 contains the student's name, current date/time including their browser's local
 time zone, all four score rows, an overall total, and the first-attempt scoring
 note. It is a screenshot of the actual progress section, rendered at a consistent
@@ -176,3 +176,23 @@ permission-denied/missing/insecure clipboard fallback, rendering failures,
 offline copying, narrow layouts/long names, and switching students during an
 unfinished capture. It has the same optional Playwright/Chromium requirements
 as the other browser tests.
+
+
+### Download a JPEG
+
+**Download progress JPEG** saves the same progress section as a high-quality
+`.jpg` file with a white background. The image includes the student's name,
+current timestamp/time zone, scores, and overall total. Its filename includes a
+sanitized student name and a timestamp. Like copying, downloading requires at
+least one scored problem and refreshes the capture each time.
+
+JPEG downloads do not need clipboard permission and work even when automatic
+image copying is unavailable. Both report buttons are temporarily disabled while
+an image is being created. If the student changes before rendering finishes,
+the previous student's JPEG is not downloaded. Rendering errors show a message
+and restore both buttons. Existing clipboard copying remains PNG for browser
+compatibility; the download button creates a real JPEG, not a renamed PNG.
+
+`tests/progress_browser.py` also checks JPEG signatures and browser decoding,
+image dimensions, filenames, failure recovery, download without clipboard/HTTPS,
+offline download, and cancelling downloads when the student changes.
