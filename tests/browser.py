@@ -8,11 +8,6 @@ threading.Thread(target=server.serve_forever,daemon=True).start()
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path=shutil.which('chromium'),headless=True,args=['--no-sandbox'])
  page=browser.new_page(viewport={'width':1366,'height':900},permissions=['clipboard-read','clipboard-write'])
- # Capture the email URL rather than launching an external mail application.
- page.route('**/script.js', lambda route: route.fulfill(
-  content_type='application/javascript',
-  body=(ROOT / 'website' / 'script.js').read_text().replace(
-   'window.location.href = emailLink;', 'window.__testMailto = emailLink;')))
  errors=[]
  page.on('pageerror',lambda e:errors.append(str(e)))
  page.goto(f'http://127.0.0.1:{server.server_port}')
@@ -92,34 +87,19 @@ with sync_playwright() as p:
  page.locator('#nextBtn').click();page.locator('#revealBtn').click()
  assert page.locator('#overallAttempted').inner_text()=='32'
  page.locator('#showCoords').check();assert page.locator('#coordinatesPanel').is_visible()
- # CSV, clipboard, email validation
- with page.expect_download() as dl:page.locator('#csvBtn').click()
- data=open(dl.value.path(),encoding='utf-8-sig').read();assert 'Review Student' in data and '"30","32","94%"' in data
- page.locator('#copyBtn').click();page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Report copied')")
- assert '30 correct out of 32' in page.evaluate('navigator.clipboard.readText()')
- # Permission-denied Clipboard API still falls back to the browser copy command.
- page.evaluate("() => { navigator.clipboard.writeText=async()=>{throw new Error('Denied')}; }")
- page.locator('#copyBtn').click()
- page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Report copied')")
- assert page.locator('body > textarea').count()==0
- assert page.evaluate('document.activeElement.id')=='copyBtn'
- # When both clipboard paths fail, cleanup and feedback still work.
- page.evaluate("() => { document.execCommand=()=>false; }")
- page.locator('#copyBtn').click()
- page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Copying was blocked')")
- assert page.locator('body > textarea').count()==0
- assert page.evaluate('document.activeElement.id')=='copyBtn'
- # Missing Clipboard API also exercises cleanup on the legacy-only path.
- page.evaluate("() => { Object.defineProperty(navigator,'clipboard',{value:undefined}); document.getElementById('reportStatus').textContent=''; }")
- page.locator('#copyBtn').click()
- page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Copying was blocked')")
- assert page.locator('body > textarea').count()==0
- assert page.evaluate('document.activeElement.id')=='copyBtn'
- page.locator('#teacherEmail').fill('bad');page.locator('#emailBtn').click();assert 'valid teacher' in page.locator('#reportStatus').inner_text()
- page.locator('#teacherEmail').fill('teacher@example.com');page.locator('#emailBtn').click()
- assert 'Opening your email application' in page.locator('#reportStatus').inner_text()
- assert page.evaluate('window.__testMailto').startswith('mailto:teacher%40example.com?subject=')
- page.reload();assert page.locator('#teacherEmail').input_value()=='teacher@example.com';assert page.locator('#overallCorrect').inner_text()=='30';assert page.locator('#overallAttempted').inner_text()=='32'
+ # Clipboard reporting now copies a PNG of the progress section.
+ assert page.locator('#emailBtn, #copyBtn, #csvBtn, #teacherEmail').count()==0
+ assert page.locator('#progressStudentName').inner_text()=='Review Student'
+ assert page.locator('#progressOverallCorrect').inner_text()=='30'
+ assert page.locator('#progressOverallAttempted').inner_text()=='32'
+ assert page.locator('#progressOverallAccuracy').inner_text()=='94%'
+ page.locator('#copyProgressBtn').click()
+ page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress screenshot copied')")
+ image=page.evaluate("async()=>{const items=await navigator.clipboard.read();const blob=await items[0].getType('image/png');const bitmap=await createImageBitmap(blob);return {type:blob.type,size:blob.size,width:bitmap.width,height:bitmap.height};}")
+ assert image['type']=='image/png' and image['size']>10000
+ assert image['width']==1280 and image['height']>600
+ assert page.locator('#progressTimestamp').get_attribute('datetime')
+ page.reload();assert page.locator('#overallCorrect').inner_text()=='30';assert page.locator('#overallAttempted').inner_text()=='32'
  # Focus settings apply to the next problem, and category totals stay separate.
  for kind in ['translation','reflection','rotation']:
   page.locator('#practiceType').select_option(kind)
@@ -142,7 +122,7 @@ with sync_playwright() as p:
  page.once('dialog',lambda d:d.accept());page.locator('#newStudentBtn').click();assert page.locator('#startPanel').is_visible()
  page.reload();assert page.locator('#startPanel').is_visible()
  assert not errors,errors
- print('PASS: browser: 30 correct answers across all types; validation; wrong/correct retry; reveal; practice settings; coordinates; CSV; clipboard; email URL; storage; reset; eight layout widths. No JS errors.')
+ print('PASS: browser: 30 correct answers across all types; validation; wrong/correct retry; reveal; practice settings; coordinates; progress PNG clipboard; storage; reset; eight layout widths. No JS errors.')
  # Attempt direct-file use; managed browser policies may forbid file URLs.
  offline=browser.new_context(offline=True)
  local=offline.new_page()

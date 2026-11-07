@@ -7,6 +7,7 @@
   <meta name="description" content="Practice translations, reflections, and rotations of triangles on the coordinate plane.">
   <title>Triangle Transformations | Interactive Geometry Game</title>
   <link rel="stylesheet" href="style.css">
+  <script src="vendor/html2canvas-1.4.1.min.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
@@ -86,15 +87,21 @@
             <label id="practiceTypeLabel" for="practiceType">Problems to generate</label><select id="practiceType"><option value="all">All transformations (mixed)</option><option value="translation">Translations only</option><option value="reflection">Reflections only</option><option value="rotation">Rotations only</option></select><p id="practiceHelp" class="field-help">The selection applies to your next problem. Mixed practice rotates evenly through the three categories.</p>
           </section>
           <section class="card score-card" aria-labelledby="scoreTitle">
-            <div class="card-heading compact-heading"><div><span class="section-kicker">YOUR PROGRESS</span><h2 id="scoreTitle">Scores by transformation</h2></div></div>
-            <table class="score-table"><thead><tr><th scope="col">Type</th><th scope="col" class="num">Right</th><th scope="col" class="num">Answered</th><th scope="col" class="num">Accuracy</th></tr></thead><tbody><tr><th scope="row">Translation</th><td id="translationCorrect" class="num">0</td><td id="translationAttempted" class="num">0</td><td id="translationAccuracy" class="num">—</td></tr><tr><th scope="row">Reflection</th><td id="reflectionCorrect" class="num">0</td><td id="reflectionAttempted" class="num">0</td><td id="reflectionAccuracy" class="num">—</td></tr><tr><th scope="row">Rotation</th><td id="rotationCorrect" class="num">0</td><td id="rotationAttempted" class="num">0</td><td id="rotationAccuracy" class="num">—</td></tr><tr><th scope="row">Hard (two steps)</th><td id="hardCorrect" class="num">0</td><td id="hardAttempted" class="num">0</td><td id="hardAccuracy" class="num">—</td></tr></tbody></table>
-            <p class="field-help score-note">Each problem is scored on the <strong>first answer only</strong>. You may retry to learn, but retries do not change your score. In Hard mode, the first complete pair is scored; resetting Step 1 counts as wrong. Easy problems use the three category rows; each Hard problem counts once in its own row.</p>
-          </section>
-          <section class="card report-card" aria-labelledby="reportTitle">
-            <div class="card-heading compact-heading"><div><span class="section-kicker">TEACHER REPORT</span><h2 id="reportTitle">Share your results</h2></div></div>
-            <label for="teacherEmail">Teacher email address</label><input id="teacherEmail" type="email" placeholder="teacher@school.edu" autocomplete="off"><p class="field-help">Opens your email application with a prepared report. You must review it and click Send yourself.</p>
-            <div class="report-actions"><button type="button" id="emailBtn" class="button button-secondary">Prepare email</button><button type="button" id="copyBtn" class="button button-quiet">Copy report</button><button type="button" id="csvBtn" class="button button-quiet">Download CSV</button></div>
-            <p class="report-status" id="reportStatus" role="status" aria-live="polite"></p>
+            <div id="progressCapture">
+            <div class="card-heading compact-heading"><div><span class="section-kicker">YOUR PROGRESS</span><h2 id="scoreTitle">Triangle Transformations</h2></div></div>
+            <div class="progress-identity"><strong id="progressStudentName"></strong><span>As of <time id="progressTimestamp"></time></span></div>
+            <table class="score-table"><thead><tr><th scope="col">Type</th><th scope="col" class="num">Right</th><th scope="col" class="num">Answered</th><th scope="col" class="num">Accuracy</th></tr></thead><tbody><tr><th scope="row">Translation</th><td id="translationCorrect" class="num">0</td><td id="translationAttempted" class="num">0</td><td id="translationAccuracy" class="num">—</td></tr><tr><th scope="row">Reflection</th><td id="reflectionCorrect" class="num">0</td><td id="reflectionAttempted" class="num">0</td><td id="reflectionAccuracy" class="num">—</td></tr><tr><th scope="row">Rotation</th><td id="rotationCorrect" class="num">0</td><td id="rotationAttempted" class="num">0</td><td id="rotationAccuracy" class="num">—</td></tr><tr><th scope="row">Hard (two steps)</th><td id="hardCorrect" class="num">0</td><td id="hardAttempted" class="num">0</td><td id="hardAccuracy" class="num">—</td></tr></tbody><tfoot><tr><th scope="row">Overall</th><td id="progressOverallCorrect" class="num">0</td><td id="progressOverallAttempted" class="num">0</td><td id="progressOverallAccuracy" class="num">—</td></tr></tfoot></table>
+            <p class="field-help score-note">Each problem is scored on the <strong>first answer only</strong>. You may retry to learn, but retries do not change your score. In Hard mode, the first complete pair is scored; resetting Step 1 counts as wrong. Easy problems use the three category rows; each Hard problem counts once in its own row. Results are browser-generated and not independently verified.</p>
+            </div>
+            <div class="progress-actions">
+              <button type="button" id="copyProgressBtn" class="button button-primary button-full">Copy progress screenshot</button>
+              <p class="field-help">Copy an image with your name, scores, and timestamp, then paste it into your assignment, document, or email.</p>
+              <p id="reportStatus" class="report-status" role="status" aria-live="polite"></p>
+              <figure id="progressPreview" class="progress-preview" hidden>
+                <img id="progressPreviewImage" alt="Progress screenshot containing the student name, timestamp, and scores">
+                <figcaption>Right-click or press and hold the image to copy it, if your browser offers that option. You can also take a screenshot of Your Progress.</figcaption>
+              </figure>
+            </div>
           </section>
         </aside>
       </div>

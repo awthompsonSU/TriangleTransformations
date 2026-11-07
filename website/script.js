@@ -6,9 +6,7 @@
   const CATEGORIES = ['translation', 'reflection', 'rotation'];
   const CATEGORY_NAMES = { translation: 'Translation', reflection: 'Reflection', rotation: 'Rotation' };
   const SCORE_KEYS = [...CATEGORIES, 'hard'];
-  const SCORE_NAMES = { ...CATEGORY_NAMES, hard: 'Hard (two steps)' };
   const STORAGE_KEY = 'triangle-transformations-web-v1';
-  const DEFAULT_TEACHER_EMAIL = ''; // Optional: teacher can put a fixed address here.
   const BOUNDS = 15;
 
   const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
@@ -132,7 +130,7 @@
   }
 
   function freshState(name = '') {
-    return { name, stats: createEmptyStats(), history: [], served: 0, focus: 'all', mode: 'easy', teacherEmail: DEFAULT_TEACHER_EMAIL };
+    return { name, stats: createEmptyStats(), history: [], served: 0, focus: 'all', mode: 'easy' };
   }
 
   function validateSavedState(candidate) {
@@ -147,15 +145,8 @@
     state.served = Number.isSafeInteger(candidate.served) && candidate.served >= 0 ? candidate.served : 0;
     state.focus = [...CATEGORIES, 'all'].includes(candidate.focus) ? candidate.focus : 'all';
     state.mode = candidate.mode === 'hard' ? 'hard' : 'easy';
-    state.teacherEmail = typeof candidate.teacherEmail === 'string' ? candidate.teacherEmail.slice(0, 254) : DEFAULT_TEACHER_EMAIL;
     state.history = Array.isArray(candidate.history) ? candidate.history.slice(-300) : [];
     return state;
-  }
-
-  function escapeCsv(value) {
-    let cell = String(value == null ? '' : value);
-    if (/^[\s]*[=+\-@\t\r]/.test(cell)) cell = "'" + cell;
-    return '"' + cell.replace(/"/g, '""') + '"';
   }
 
   function init() {
@@ -169,7 +160,8 @@
     const checkBtn = $('checkBtn');
     const nextBtn = $('nextBtn');
     const revealBtn = $('revealBtn');
-    const teacherEmail = $('teacherEmail');
+    const copyProgressBtn = $('copyProgressBtn');
+    let progressPreviewUrl = null;
     const practiceType = $('practiceType');
     const gameMode = $('gameMode');
     const resetFirstBtn = $('resetFirstBtn');
@@ -203,6 +195,12 @@
       $('overallCorrect').textContent = total.correct;
       $('overallAttempted').textContent = total.attempted;
       $('overallAccuracy').textContent = percent(total.correct, total.attempted);
+      $('progressOverallCorrect').textContent = total.correct;
+      $('progressOverallAttempted').textContent = total.attempted;
+      $('progressOverallAccuracy').textContent = percent(total.correct, total.attempted);
+      updateProgressIdentity(new Date());
+      clearProgressPreview();
+      $('reportStatus').textContent = '';
       for (const key of SCORE_KEYS) {
         const { correct, attempted } = state.stats[key];
         $(key + 'Correct').textContent = correct;
@@ -217,7 +215,6 @@
       gameArea.hidden = false;
       practiceType.value = state.focus;
       gameMode.value = state.mode;
-      teacherEmail.value = state.teacherEmail;
       updateScoreboard();
       newProblem();
     }
@@ -539,99 +536,95 @@
       showFeedback('Solution', description + ' This problem is counted as missed in your first-try score.', 'info');
     }
 
-    function makeReport() {
-      const total = sumScore();
-      const lines = [
-        'TRIANGLE TRANSFORMATIONS — STUDENT RESULTS',
-        `Student: ${state.name}`,
-        `Report created: ${new Date().toLocaleString()}`,
-        '',
-        `Overall: ${total.correct} correct out of ${total.attempted} answered (${percent(total.correct, total.attempted)})`,
-        ...SCORE_KEYS.map(key => `${SCORE_NAMES[key]}: ${state.stats[key].correct} correct out of ${state.stats[key].attempted} answered (${percent(state.stats[key].correct, state.stats[key].attempted)})`),
-        '',
-        'Scoring: Only the first answer to each problem counts. Revealing a solution counts as incorrect.',
-        'Hard mode: The first complete two-step answer counts. Resetting Step 1 counts the problem as incorrect. Hard problems are counted once in their own row.',
-        'Results are student-generated in a web browser; they are not independently verified.'
-      ];
-      return lines.join('\n');
+    function formatProgressTime(date) {
+      return date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
     }
 
-    function canReport() {
+    function updateProgressIdentity(date) {
+      $('progressStudentName').textContent = state.name;
+      $('progressTimestamp').dateTime = date.toISOString();
+      $('progressTimestamp').textContent = formatProgressTime(date);
+    }
+
+    function clearProgressPreview() {
+      $('progressPreview').hidden = true;
+      $('progressPreviewImage').removeAttribute('src');
+      if (progressPreviewUrl) URL.revokeObjectURL(progressPreviewUrl);
+      progressPreviewUrl = null;
+    }
+
+    async function renderProgressImage(snapshot) {
+      if (typeof window.html2canvas !== 'function') throw new Error('Image renderer unavailable');
+      const canvas = await window.html2canvas($('progressCapture'), {
+        backgroundColor: '#ffffff', scale: 2, logging: false,
+        windowWidth: 1280, windowHeight: 900,
+        onclone: cloned => {
+          const capture = cloned.getElementById('progressCapture');
+          // A consistent readable image, including when copied from a narrow phone.
+          capture.style.width = '640px';
+          capture.style.padding = '24px';
+          capture.style.boxSizing = 'border-box';
+          capture.querySelector('.score-table').style.fontSize = '16px';
+          capture.querySelector('.score-note').style.fontSize = '14px';
+          cloned.getElementById('progressStudentName').textContent = snapshot.name;
+          cloned.getElementById('progressTimestamp').textContent = formatProgressTime(snapshot.at);
+          cloned.getElementById('progressTimestamp').dateTime = snapshot.at.toISOString();
+          for (const key of SCORE_KEYS) {
+            const row = snapshot.stats[key];
+            cloned.getElementById(key + 'Correct').textContent = row.correct;
+            cloned.getElementById(key + 'Attempted').textContent = row.attempted;
+            cloned.getElementById(key + 'Accuracy').textContent = percent(row.correct, row.attempted);
+          }
+          cloned.getElementById('progressOverallCorrect').textContent = snapshot.total.correct;
+          cloned.getElementById('progressOverallAttempted').textContent = snapshot.total.attempted;
+          cloned.getElementById('progressOverallAccuracy').textContent = percent(snapshot.total.correct, snapshot.total.attempted);
+        }
+      });
+      return new Promise((resolve, reject) => canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('Could not create PNG image'));
+      }, 'image/png'));
+    }
+
+    async function copyProgressScreenshot() {
+      if (copyProgressBtn.disabled) return;
       if (sumScore().attempted === 0) {
-        $('reportStatus').textContent = 'Answer at least one problem before creating a score report.';
-        return false;
-      }
-      return true;
-    }
-
-    function sendEmail() {
-      if (!canReport()) return;
-      const address = teacherEmail.value.trim();
-      if (!address || !teacherEmail.checkValidity()) {
-        $('reportStatus').textContent = 'Enter a valid teacher email address first.';
-        teacherEmail.focus();
+        $('reportStatus').textContent = 'Answer at least one problem before copying your progress.';
         return;
       }
-      state.teacherEmail = address;
-      save();
-      const subject = `Triangle Transformations Score — ${state.name}`;
-      const emailLink = `mailto:${encodeURIComponent(address)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(makeReport())}`;
-      $('reportStatus').textContent = 'Opening your email application. Review the report and press Send. If nothing opens, use Copy report.';
-      window.location.href = emailLink;
-    }
-
-    async function copyReport() {
-      if (!canReport()) return;
-      const report = makeReport();
+      const session = state;
+      const at = new Date();
+      const snapshot = { name: state.name, stats: JSON.parse(JSON.stringify(state.stats)), total: sumScore(), at };
+      updateProgressIdentity(at);
+      clearProgressPreview();
+      copyProgressBtn.disabled = true;
+      copyProgressBtn.setAttribute('aria-busy', 'true');
+      $('reportStatus').textContent = 'Creating your progress screenshot…';
+      const imagePromise = renderProgressImage(snapshot);
       try {
-        if (navigator.clipboard && window.isSecureContext) {
-          try {
-            await navigator.clipboard.writeText(report);
-            $('reportStatus').textContent = 'Report copied. Paste it into an email, document, or learning management system.';
-            return;
-          } catch (_) { /* Try the legacy path if clipboard permission is denied. */ }
+        if (!window.isSecureContext || !navigator.clipboard || !navigator.clipboard.write || typeof ClipboardItem !== 'function') {
+          throw new Error('Image clipboard unavailable');
         }
-        const previousFocus = document.activeElement;
-        const temp = document.createElement('textarea');
-        try {
-          temp.value = report;
-          temp.style.position = 'fixed';
-          temp.style.left = '-9999px';
-          document.body.appendChild(temp);
-          temp.select();
-          if (!document.execCommand('copy')) throw new Error('Clipboard unavailable');
-        } finally {
-          temp.remove();
-          if (previousFocus) previousFocus.focus({ preventScroll: true });
-        }
-        $('reportStatus').textContent = 'Report copied. Paste it into an email, document, or learning management system.';
+        // Start the clipboard write during the click. The PNG promise preserves
+        // the user gesture in browsers that require it, including Safari.
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePromise })]);
+        if (state === session) $('reportStatus').textContent = 'Progress screenshot copied. Paste the image into your assignment, document, or email.';
       } catch (_) {
-        $('reportStatus').textContent = 'Copying was blocked by the browser. Try Download CSV instead.';
+        try {
+          const image = await imagePromise;
+          if (state !== session) return;
+          progressPreviewUrl = URL.createObjectURL(image);
+          $('progressPreviewImage').src = progressPreviewUrl;
+          $('progressPreview').hidden = false;
+          $('reportStatus').textContent = 'Automatic image copying is unavailable or was blocked. Copy the image below manually, or take a screenshot of Your Progress.';
+        } catch (_) {
+          if (state === session) $('reportStatus').textContent = 'Could not create the image. Take a screenshot of Your Progress, or reload the page and try again.';
+        }
+      } finally {
+        copyProgressBtn.disabled = false;
+        copyProgressBtn.removeAttribute('aria-busy');
       }
-    }
-
-    function downloadCsv() {
-      if (!canReport()) return;
-      const total = sumScore();
-      const headers = ['Student Name', 'Report Date', 'Overall Correct', 'Overall Answered', 'Overall Accuracy',
-        ...SCORE_KEYS.flatMap(key => [`${SCORE_NAMES[key]} Correct`, `${SCORE_NAMES[key]} Answered`, `${SCORE_NAMES[key]} Accuracy`])];
-      const values = [state.name, new Date().toLocaleString(), total.correct, total.attempted, percent(total.correct, total.attempted),
-        ...SCORE_KEYS.flatMap(key => {
-          const row = state.stats[key];
-          return [row.correct, row.attempted, percent(row.correct, row.attempted)];
-        })];
-      const csv = '\uFEFF' + [headers.map(escapeCsv).join(','), values.map(escapeCsv).join(',')].join('\r\n') + '\r\n';
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      const fileName = state.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 50) || 'student';
-      anchor.download = `TriangleTransformations_${fileName}_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      $('reportStatus').textContent = 'CSV score report downloaded. Attach the file to an email or submit it to your teacher.';
     }
 
     startForm.addEventListener('submit', event => {
@@ -664,12 +657,9 @@
       updatePracticeSettings();
       save();
     });
-    teacherEmail.addEventListener('change', () => { state.teacherEmail = teacherEmail.value.trim(); save(); });
-    $('emailBtn').addEventListener('click', sendEmail);
-    $('copyBtn').addEventListener('click', copyReport);
-    $('csvBtn').addEventListener('click', downloadCsv);
+    copyProgressBtn.addEventListener('click', copyProgressScreenshot);
     $('newStudentBtn').addEventListener('click', () => {
-      if (!window.confirm('Start a new student session? This removes the current student name and all scores saved on this browser. Download or email the results first if you need them.')) return;
+      if (!window.confirm('Start a new student session? This removes the current student name and all scores saved on this browser. Copy a progress screenshot first if you need the results.')) return;
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* ignore */ }
       state = freshState();
       mixedBag = [];
@@ -682,6 +672,7 @@
       startPanel.hidden = false;
       gameArea.hidden = true;
       $('reportStatus').textContent = '';
+      clearProgressPreview();
       studentName.focus();
     });
 
@@ -692,7 +683,7 @@
 
   // Expose pure mathematical helpers for automated testing in Node; no server required.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { applyTransformation, trianglesMatch, generateProblem, generateHardProblem, mapsInOneStep, describeRule, twiceArea, escapeCsv };
+    module.exports = { applyTransformation, trianglesMatch, generateProblem, generateHardProblem, mapsInOneStep, describeRule, twiceArea };
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

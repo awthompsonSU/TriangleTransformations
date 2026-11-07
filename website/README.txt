@@ -8,7 +8,8 @@ FILES
 -----
 index.html  — webpage structure
 style.css   — appearance and responsive layout
-script.js   — triangle generation, geometry, answer checking, scoring, email/CSV
+script.js   — triangle generation, geometry, answer checking, scoring, image reports
+vendor/     — bundled html2canvas 1.4.1 renderer and MIT license
 
 QUICK START
 -----------
@@ -17,12 +18,13 @@ QUICK START
 3. Double-click index.html to open the game in your web browser.
 4. Enter a student name and select Start playing.
 
-No Java, server, or external libraries are required. The game works offline.
+No Java, build process, or backend server is required. The image renderer is
+bundled locally in vendor/. The game works offline after its files are loaded.
 
 HOST IT AND LINK IT FROM YOUR HOMEPAGE
 --------------------------------------
 Upload the entire TriangleTransformationsWeb folder to your website. Keep
-index.html, style.css and script.js together in the same folder. From an HTML
+index.html, style.css, script.js and the vendor/ folder together. From an HTML
 homepage one directory above that folder, add:
 
 <a href="TriangleTransformationsWeb/index.html">Triangle Transformations Game</a>
@@ -78,29 +80,28 @@ STUDENT INFORMATION AND TEACHER REPORTS
 ---------------------------------------
 The name and results are saved in the browser's localStorage, on that device,
 where browser policy permits. The program has no accounts or remote database.
-On shared devices, students should download/send the report first, then use
-"New student / clear scores" before the next person begins.
+On shared devices, students should copy their progress screenshot first, then
+use "New student / clear scores" before the next person begins.
 
-In "Share your results," the student can:
-  1. Type a teacher's email and select "Prepare email". This launches the
-     device's configured email client with a prewritten report. The student
-     must review and SEND it; it is not sent automatically.
-  2. Choose "Copy report" and paste the score into email or an LMS.
-  3. Choose "Download CSV" to produce a score file for Excel/Sheets or LMS.
+Use "Copy progress screenshot" in Your Progress to copy a PNG image containing:
+  - The student's name and the current date/time with local time zone.
+  - Easy category scores, the Hard (two steps) score, and an overall total.
+  - The first-attempt scoring explanation.
+Paste the image into an assignment editor, document, or email that accepts images.
+The screenshot has a consistent readable size even when copied from a phone.
+At least one problem must be scored before copying.
 
-If no email client is configured, use Copy report or Download CSV.
-For formal graded assignments, a secure server-based submission system with
-student authentication is recommended: these browser-generated scores can
-be altered and are not independently verified.
+Automatic image copying needs HTTPS or localhost and browser Clipboard API support.
+If the browser blocks or does not support image copying, a preview appears for
+manual copying. Right-click or press and hold the preview for your browser's
+image-copy options, or take a screenshot of Your Progress. A rendering failure
+shows instructions instead of claiming that a copy succeeded.
 
-To prefill the same teacher email for newly started sessions, change the line
-in script.js:
-
-  const DEFAULT_TEACHER_EMAIL = '';
-
-For example:
-
-  const DEFAULT_TEACHER_EMAIL = 'your-address@school.edu';
+The previous email, teacher-email, copy-text, and CSV controls have been removed.
+The app never sends scores automatically. Rendering happens on the device using
+the bundled renderer; there are no third-party requests for screenshots.
+For formal graded assignments, these browser-generated scores and device-clock
+timestamps can be altered and are not independently verified.
 
 MODE SCOPE
 ----------
@@ -118,8 +119,9 @@ Mode selection and scores are saved locally, preserving older Easy-mode scores.
 
 WEB HOSTING / PRIVACY NOTES
 ---------------------------
-The website has no external scripts, cookies, trackers or network requests.
+The website uses only local static files, including its bundled image renderer.
+It has no remote submission endpoint, cookies, trackers, or third-party requests.
 Data is saved in each browser rather than collected centrally. Clearing site
 data or changing devices may erase or hide saved scores. Local file URLs may
-have differing storage restrictions across browsers; hosting the three files
+have differing storage restrictions across browsers; hosting the complete website folder
 under HTTPS is recommended for a consistent classroom deployment.

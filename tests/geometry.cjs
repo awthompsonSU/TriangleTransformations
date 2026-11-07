@@ -23,9 +23,7 @@ const pts=[[1,2],[5,3],[-2,6]];
 assert(!m.trianglesMatch(pts,[pts[1],pts[0],pts[2]]));
 assert(!m.trianglesMatch(pts,[[1,2],[5,3],[-2,5]]));
 assert(!m.trianglesMatch(m.applyTransformation(pts,{type:'rotation',degrees:90,direction:'cw'}),m.applyTransformation(pts,{type:'rotation',degrees:90,direction:'ccw'})));
-assert.equal(m.escapeCsv('=1+1'),'"\'=1+1"');
-assert.equal(m.escapeCsv('A "Student"'),'"A ""Student"""');
-console.log('PASS: exhaustive rotation grid, reflection round trips, incorrect correspondence/direction, CSV escaping');
+console.log('PASS: exhaustive rotation grid, reflection round trips, incorrect correspondence/direction');
 
 // Two-step problems must compose in order, stay on-grid at both stages,
 // and require more than one of the supported single transformations.

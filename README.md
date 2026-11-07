@@ -26,7 +26,7 @@ If you upload just the contents of `website/` to a folder named `TriangleTransfo
 
 - Opening this project in Codex does not automatically carry over this ChatGPT conversation. The included `AGENTS.md` and starter prompt explain the goals and design decisions.
 - Scores are currently stored only in a local browser, not centrally.
-- The email report only launches a configured email application; students must send the email themselves.
+- Copy progress screenshot puts a PNG image on the clipboard; students paste it into their assignment, document, or email themselves. No scores are sent automatically.
 
 For classroom grading, ask Codex to design a secure optional submission backend rather than treating localStorage totals as authoritative grades.
 
@@ -67,9 +67,12 @@ To check the site manually:
    from the original black vertices. A correct guess should coincide with red.
    Try translating by 30 horizontally and 30 vertically to check the off-grid
    message and full guessed coordinates. Next problem should clear the overlay.
-6. Try Copy report and Download CSV. Prepare email should open your configured
-   email app; you must send it yourself. Actual delivery requires a working
-   email application. If copying is blocked, the site offers CSV as an alternative.
+6. Select **Copy progress screenshot** after answering a problem. Paste into an
+   image-capable document, email, or assignment editor. Confirm the image contains
+   the student name, timestamp with local time zone, category scores, Hard score,
+   and overall total. The copy button itself is excluded. If automatic copying
+   is blocked or unsupported, copy the displayed preview manually or take a
+   screenshot of Your Progress.
 7. Reload to check saved totals, resize the window, and test New student / clear
    scores. Direct-file use works offline; a hosted site needs its files loaded
    and does not install an offline service worker.
@@ -80,11 +83,12 @@ Automated checks (no build step or test dependency is required to use the site):
 node tests/geometry.cjs
 python3 tests/browser.py
 python3 tests/hard_browser.py
+python3 tests/progress_browser.py
 ```
 
 The geometry checks require Node.js and test 30,000 generated problems, all six
 supported rotation descriptions across the displayed integer grid, reflection
-round trips, incorrect vertex matching, and CSV escaping. The browser checks
+round trips and incorrect vertex matching. The browser checks
 require Python's optional `playwright` package plus Chromium. For a separate test
 environment, install them with `python3 -m pip install playwright` and
 `python3 -m playwright install chromium`. The test uses system Chromium when
@@ -93,11 +97,11 @@ available, otherwise Playwright's installed browser.
 Browser checks cover all three categories, equivalent rotations, invalid inputs,
 wrong/correct retries, reveals, practice settings, coordinates, green guess
 overlays (including off-grid guesses, retries, matches, and clearing), score persistence,
-student reset, clipboard permission failures, CSV contents, the prepared email
-URL, eight viewport widths from 320 to 1366 pixels, offline gameplay, direct-file use when browser policy permits, and
+student reset, PNG clipboard reports, eight viewport widths from 320 to 1366
+pixels, offline gameplay, direct-file use when browser policy permits, and
 blocked browser storage. If managed Chromium blocks file URLs, that check is
-reported as skipped and offline gameplay is tested after loading from localhost. Email URL testing intercepts the external mail launch;
-it does not send messages. Tests leave application source and student data alone.
+reported as skipped and offline gameplay is tested after loading from localhost.
+Tests leave application source and student data alone.
 
 
 ## Hard mode: two transformations
@@ -135,7 +139,40 @@ The geometry suite also checks 6,000 Hard problems, all six ordered category
 pairs, independently calculated compositions, intermediate/final bounds, and
 single-step shortcuts. `tests/hard_browser.py` checks the staged entry flow,
 correct/incorrect pairs, alternative sequences, invalid second inputs, reset
-penalties, retries, reveals, mode changes, CSV/copy reporting, older saved-score
+penalties, retries, reveals, mode changes, screenshot reporting, older saved-score
 migration, student reset, and eight desktop/mobile widths. Test dependencies are
 the same as for `tests/browser.py`. The application itself remains a standalone
 static site without test dependencies or a build process.
+
+
+## Progress screenshots
+
+The previous email, text-report, teacher-email, and CSV controls have been
+replaced by one **Copy progress screenshot** button in Your Progress. The PNG
+contains the student's name, current date/time including their browser's local
+time zone, all four score rows, an overall total, and the first-attempt scoring
+note. It is a screenshot of the actual progress section, rendered at a consistent
+1280-pixel image width so reports remain readable when copied from a phone.
+The timestamp refreshes on score updates and on every copy. It comes from the
+student's device clock and is not an independently verified timestamp.
+
+Image copying uses the browser's Clipboard API on HTTPS (or localhost). Supported
+browsers receive a PNG clipboard item, which can be pasted into an editor that
+accepts images. If clipboard access is denied or unsupported, a PNG preview is
+shown for manual copying; if image creation fails, the page explains how to take
+a screenshot. Some school-managed browsers may block clipboard access. No text
+report, email launch, automatic submission, or CSV download remains.
+
+Rendering uses a locally bundled copy of html2canvas 1.4.1 with its MIT license
+in `website/vendor/`. There is no CDN request or new backend. Upload the **entire
+website folder, including vendor/** when moving the app to another host. The
+app still needs no build process and can be used offline after its files load.
+Old stored teacher-email fields are ignored and removed on the next local save;
+existing names, mode preferences, and scores remain available.
+
+`tests/progress_browser.py` verifies actual PNG clipboard output, student-name
+handling, timestamp/time zone, combined Easy/Hard totals, refreshed captures,
+permission-denied/missing/insecure clipboard fallback, rendering failures,
+offline copying, narrow layouts/long names, and switching students during an
+unfinished capture. It has the same optional Playwright/Chromium requirements
+as the other browser tests.
