@@ -88,12 +88,15 @@ Use "Copy progress screenshot" in Your Progress to copy a PNG image containing:
   - Easy category scores, the Hard (two steps) score, and an overall total.
   - The first-attempt scoring explanation.
 Paste the image into an assignment editor, document, or email that accepts images.
+Alternatively, select "Download progress JPEG" to save the same section as a
+high-quality .jpg image. The filename includes the student name and a timestamp.
+Downloading does not require clipboard permission.
 The screenshot has a consistent readable size even when copied from a phone.
 At least one problem must be scored before copying.
 
 Automatic image copying needs HTTPS or localhost and browser Clipboard API support.
 If the browser blocks or does not support image copying, a preview appears for
-manual copying. Right-click or press and hold the preview for your browser's
+manual copying; the JPEG download button also remains available. Right-click or press and hold the preview for your browser's
 image-copy options, or take a screenshot of Your Progress. A rendering failure
 shows instructions instead of claiming that a copy succeeded.
 

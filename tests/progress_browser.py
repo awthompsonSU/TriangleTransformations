@@ -40,6 +40,9 @@ try:
         page.locator('#copyProgressBtn').click()
         assert 'at least one problem' in page.locator('#reportStatus').inner_text()
         assert page.locator('#copyProgressBtn').is_enabled()
+        page.locator('#downloadProgressBtn').click()
+        assert 'at least one problem' in page.locator('#reportStatus').inner_text()
+        assert page.locator('#downloadProgressBtn').is_enabled()
 
         # Load a realistic mixed Easy/Hard session; no answers are changed by copying.
         page.evaluate('''() => localStorage.setItem('triangle-transformations-web-v1', JSON.stringify({
@@ -96,6 +99,26 @@ try:
             assert len(png) > 10000
             return png
 
+        def download_jpeg():
+            with page.expect_download() as download:
+                page.locator('#downloadProgressBtn').click()
+            item = download.value
+            assert item.suggested_filename.startswith('TriangleTransformations_')
+            assert item.suggested_filename.endswith('.jpg') and ':' not in item.suggested_filename
+            jpeg = Path(item.path()).read_bytes()
+            assert jpeg.startswith(b'\xff\xd8\xff') and jpeg.endswith(b'\xff\xd9')
+            encoded = base64.b64encode(jpeg).decode()
+            dimensions = page.evaluate("""async encoded=>{
+                const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
+                const image=await createImageBitmap(new Blob([bytes],{type:'image/jpeg'}));
+                return {width:image.width,height:image.height};
+            }""", encoded)
+            assert dimensions['width'] == 1280 and 600 < dimensions['height'] < 2000
+            assert page.locator('#downloadProgressBtn').is_enabled()
+            assert page.locator('#copyProgressBtn').is_enabled()
+            assert 'JPEG download started' in page.locator('#reportStatus').inner_text()
+            return item.suggested_filename
+
         page.locator('#copyProgressBtn').click()
         wait_for_copy()
         original_png = read_png()
@@ -104,6 +127,8 @@ try:
         assert page.locator('#progressCapture button, #progressCapture figure').count() == 0
         assert page.evaluate("localStorage.getItem('triangle-transformations-web-v1')") == state_before
         assert page.locator('#progressPreview').is_hidden()
+        assert download_jpeg().endswith('_2026-11-07T15-30-45-000Z.jpg')
+        assert page.evaluate("localStorage.getItem('triangle-transformations-web-v1')") == state_before
 
         # A later timestamp is captured afresh, rather than reusing the old image.
         page.clock.set_fixed_time(datetime(2026, 11, 7, 15, 31, 50, tzinfo=timezone.utc))
@@ -132,12 +157,18 @@ try:
         page.wait_for_function("!document.getElementById('progressPreview').hidden")
         assert page.locator('#copyProgressBtn').is_enabled()
 
+        download_jpeg()  # Downloads work without the clipboard API or HTTPS.
+
         # A rendering failure is caught, leaves the game usable, and does not retain
         # the old image or claim copying succeeded.
         page.evaluate("() => {window.html2canvas=async()=>{throw new Error('Render failed')};}")
         page.locator('#copyProgressBtn').click()
         page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Could not create')")
         assert page.locator('#progressPreview').is_hidden()
+        assert page.locator('#copyProgressBtn').is_enabled()
+        page.locator('#downloadProgressBtn').click()
+        page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Could not create the JPEG')")
+        assert page.locator('#downloadProgressBtn').is_enabled()
         assert page.locator('#copyProgressBtn').is_enabled()
         page.reload()
 
@@ -146,6 +177,7 @@ try:
         page.locator('#copyProgressBtn').click()
         wait_for_copy()
         read_png()
+        download_jpeg()
         context.set_offline(False)
 
         # A long name and very narrow layout still produce the same full-width PNG.
@@ -180,8 +212,23 @@ try:
         assert page.locator('#reportStatus').inner_text() == ''
         assert page.locator('#progressStudentName').inner_text() == 'New Student'
         assert page.locator('#progressOverallAttempted').inner_text() == '0'
+        # A pending JPEG is also cancelled if the student changes before it is ready.
+        page.locator('#revealBtn').click()
+        unexpected_downloads = []
+        page.on('download', lambda item: unexpected_downloads.append(item.suggested_filename))
+        page.locator('#downloadProgressBtn').click()
+        assert page.locator('#copyProgressBtn').is_disabled()
+        assert page.locator('#downloadProgressBtn').is_disabled()
+        page.once('dialog', lambda dialog: dialog.accept())
+        page.locator('#newStudentBtn').click()
+        page.locator('#studentName').fill('Another Student')
+        page.locator('#startForm button').click()
+        page.evaluate('window.finishOldCapture()')
+        page.wait_for_function("!document.getElementById('downloadProgressBtn').disabled")
+        assert not unexpected_downloads
+        assert page.locator('#reportStatus').inner_text() == ''
         assert not errors, errors
         browser.close()
-        print('PASS: PNG clipboard, student identity, local timestamp/time zone, totals, permission/HTTPS fallback, rendering failure, offline use, long names, and session-switch privacy')
+        print('PASS: PNG clipboard, JPEG download, student identity, local timestamp/time zone, totals, permission/HTTPS fallback, rendering failure, offline use, long names, and session-switch privacy')
 finally:
     server.shutdown()

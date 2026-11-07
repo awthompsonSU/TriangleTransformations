@@ -161,6 +161,7 @@
     const nextBtn = $('nextBtn');
     const revealBtn = $('revealBtn');
     const copyProgressBtn = $('copyProgressBtn');
+    const downloadProgressBtn = $('downloadProgressBtn');
     let progressPreviewUrl = null;
     const practiceType = $('practiceType');
     const gameMode = $('gameMode');
@@ -554,7 +555,7 @@
       progressPreviewUrl = null;
     }
 
-    async function renderProgressImage(snapshot) {
+    async function renderProgressImage(snapshot, format = 'image/png') {
       if (typeof window.html2canvas !== 'function') throw new Error('Image renderer unavailable');
       const canvas = await window.html2canvas($('progressCapture'), {
         backgroundColor: '#ffffff', scale: 2, logging: false,
@@ -582,9 +583,17 @@
         }
       });
       return new Promise((resolve, reject) => canvas.toBlob(blob => {
-        if (blob) resolve(blob);
-        else reject(new Error('Could not create PNG image'));
-      }, 'image/png'));
+        if (blob && blob.type === format) resolve(blob);
+        else reject(new Error('Could not create image'));
+      }, format, .95));
+    }
+
+    function setProgressBusy(busy) {
+      for (const button of [copyProgressBtn, downloadProgressBtn]) {
+        button.disabled = busy;
+        if (busy) button.setAttribute('aria-busy', 'true');
+        else button.removeAttribute('aria-busy');
+      }
     }
 
     async function copyProgressScreenshot() {
@@ -598,8 +607,7 @@
       const snapshot = { name: state.name, stats: JSON.parse(JSON.stringify(state.stats)), total: sumScore(), at };
       updateProgressIdentity(at);
       clearProgressPreview();
-      copyProgressBtn.disabled = true;
-      copyProgressBtn.setAttribute('aria-busy', 'true');
+      setProgressBusy(true);
       $('reportStatus').textContent = 'Creating your progress screenshot…';
       const imagePromise = renderProgressImage(snapshot);
       try {
@@ -617,13 +625,47 @@
           progressPreviewUrl = URL.createObjectURL(image);
           $('progressPreviewImage').src = progressPreviewUrl;
           $('progressPreview').hidden = false;
-          $('reportStatus').textContent = 'Automatic image copying is unavailable or was blocked. Copy the image below manually, or take a screenshot of Your Progress.';
+          $('reportStatus').textContent = 'Automatic image copying is unavailable or was blocked. Download the JPEG, copy the image below manually, or take a screenshot of Your Progress.';
         } catch (_) {
           if (state === session) $('reportStatus').textContent = 'Could not create the image. Take a screenshot of Your Progress, or reload the page and try again.';
         }
       } finally {
-        copyProgressBtn.disabled = false;
-        copyProgressBtn.removeAttribute('aria-busy');
+        setProgressBusy(false);
+      }
+    }
+
+    async function downloadProgressScreenshot() {
+      if (downloadProgressBtn.disabled) return;
+      if (sumScore().attempted === 0) {
+        $('reportStatus').textContent = 'Answer at least one problem before downloading your progress.';
+        return;
+      }
+      const session = state;
+      const at = new Date();
+      const snapshot = { name: state.name, stats: JSON.parse(JSON.stringify(state.stats)), total: sumScore(), at };
+      updateProgressIdentity(at);
+      clearProgressPreview();
+      setProgressBusy(true);
+      $('reportStatus').textContent = 'Creating your progress JPEG…';
+      try {
+        const image = await renderProgressImage(snapshot, 'image/jpeg');
+        if (state !== session) return;
+        const url = URL.createObjectURL(image);
+        const anchor = document.createElement('a');
+        const name = snapshot.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 50) || 'student';
+        anchor.href = url;
+        anchor.download = `TriangleTransformations_${name}_${at.toISOString().replace(/[:.]/g, '-')}.jpg`;
+        document.body.appendChild(anchor);
+        try { anchor.click(); } finally {
+          anchor.remove();
+          // Allow the browser time to consume the image before releasing it.
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
+        $('reportStatus').textContent = 'Progress JPEG download started.';
+      } catch (_) {
+        if (state === session) $('reportStatus').textContent = 'Could not create the JPEG. Try again, copy the progress screenshot, or take a screenshot of Your Progress.';
+      } finally {
+        setProgressBusy(false);
       }
     }
 
@@ -658,8 +700,9 @@
       save();
     });
     copyProgressBtn.addEventListener('click', copyProgressScreenshot);
+    downloadProgressBtn.addEventListener('click', downloadProgressScreenshot);
     $('newStudentBtn').addEventListener('click', () => {
-      if (!window.confirm('Start a new student session? This removes the current student name and all scores saved on this browser. Copy a progress screenshot first if you need the results.')) return;
+      if (!window.confirm('Start a new student session? This removes the current student name and all scores saved on this browser. Copy or download a progress screenshot first if you need the results.')) return;
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* ignore */ }
       state = freshState();
       mixedBag = [];
