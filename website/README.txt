@@ -36,7 +36,8 @@ If the homepage and game are hosted in different directories, adjust the URL.
 HOW THE GAME WORKS
 ------------------
 - The black triangle is the original; the red triangle is the result.
-- Students choose Translation, Reflection or Rotation and enter its details.
+- Students select Easy (one transformation) or Hard (two transformations),
+  then choose Translation, Reflection or Rotation and enter each rule.
 - Translations: whole-number horizontal and vertical offsets.
 - Reflections: a vertical line x = a or horizontal line y = b.
 - Rotations: 90, 180, 270 degrees, clockwise or counterclockwise, about (0,0).
@@ -45,7 +46,8 @@ HOW THE GAME WORKS
 - After each valid submitted guess, a green dashed triangle shows where that
   transformation sends the original black triangle. Its vertices are A*, B*, C*.
   Each retry replaces the previous green triangle; it does not transform the
-  previous guess. The overlay clears for each new problem.
+  previous guess in Easy mode. In Hard mode Step 2 always starts from the
+  saved Step 1 result. The overlay clears for each new problem.
 - Correct guesses overlay the red target; dashed edges and hollow vertex markers
   keep the red triangle visible. Invalid/incomplete answers do not change the
   last valid guess or count as attempts.
@@ -54,7 +56,9 @@ HOW THE GAME WORKS
 - The optional "Show vertex coordinates" toggle provides a learning aid and
   includes the green guessed vertices after an answer is submitted.
 - Mixed mode distributes the three types evenly in shuffled groups.
-- Practice settings can limit newly generated problems to one category.
+- In Easy mode, practice settings limit newly generated problems to one category.
+  In Hard mode, the focus selects the first category; the second uses another type.
+  Mode and focus changes apply to the next problem.
 
 SCORING
 -------
@@ -64,7 +68,11 @@ The student's first valid answer to each question determines the score:
   Reveal without answering: zero correct, one answered.
 Invalid/incomplete forms do not count as attempts. Students can retry after an
 incorrect response, but retries cannot increase the first-attempt score.
-The score table contains category totals and percentages.
+The score table contains category totals and percentages for Easy problems,
+plus a separate Hard (two steps) row. Each Hard problem counts once overall.
+In Hard mode the first complete pair determines the score. A submitted first
+step alone is not scored. Resetting Step 1 immediately marks the problem missed;
+repeated resets or later correct answers cannot alter that first-attempt score.
 
 STUDENT INFORMATION AND TEACHER REPORTS
 ---------------------------------------
@@ -96,9 +104,17 @@ For example:
 
 MODE SCOPE
 ----------
-This first web version implements one transformation per problem, like the
-beginner mode of the Java program. The original Java project also offered an
-advanced two-transformation mode, which is not yet included in this version.
+Easy mode implements one transformation per problem, like beginner Java play.
+Hard mode implements two transformations in order, inspired by advanced Java play:
+  1. Submit Step 1 to see the intermediate triangle in green.
+  2. Submit Step 2 to transform that intermediate triangle, then check the pair.
+  3. Retry Step 2 from the saved first result, or reset Step 1 (counts as wrong).
+Any pair mapping every corresponding vertex to the red triangle is accepted.
+The coordinate toggle shows the saved first result with subscript 1 after Step 2.
+Generated problems use two different types, keep both stages within the grid,
+and cannot be solved by one supported transformation. Solution reveal describes
+one valid pair in order. Next problem clears the steps and the green triangle.
+Mode selection and scores are saved locally, preserving older Easy-mode scores.
 
 WEB HOSTING / PRIVACY NOTES
 ---------------------------

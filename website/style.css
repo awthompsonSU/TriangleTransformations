@@ -8,3 +8,7 @@
 .coord-green{color:#126b33}
 
 .translation-icon{width:1em;height:1em;vertical-align:-.12em}
+
+.step-summary{padding:12px;border:1px solid #b6dcc6;border-radius:9px;background:#e9f6ee;color:#175b33;font-size:.85rem;overflow-wrap:anywhere}
+#resetFirstBtn{margin-top:12px}
+#modeLabel{max-width:145px;text-align:right;margin-bottom:0}

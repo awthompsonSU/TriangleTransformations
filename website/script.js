@@ -5,12 +5,13 @@
 
   const CATEGORIES = ['translation', 'reflection', 'rotation'];
   const CATEGORY_NAMES = { translation: 'Translation', reflection: 'Reflection', rotation: 'Rotation' };
+  const SCORE_KEYS = [...CATEGORIES, 'hard'];
+  const SCORE_NAMES = { ...CATEGORY_NAMES, hard: 'Hard (two steps)' };
   const STORAGE_KEY = 'triangle-transformations-web-v1';
   const DEFAULT_TEACHER_EMAIL = ''; // Optional: teacher can put a fixed address here.
   const BOUNDS = 15;
 
   const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
-  const clone = value => JSON.parse(JSON.stringify(value));
 
   function applyTransformation(points, rule) {
     return points.map(([x, y]) => {
@@ -87,6 +88,35 @@
     throw new Error('Unable to generate problem');
   }
 
+  function mapsInOneStep(original, transformed) {
+    const [x, y] = original[0], [tx, ty] = transformed[0];
+    const candidates = [
+      { type: 'translation', dx: tx - x, dy: ty - y },
+      { type: 'reflection', axis: 'x', value: (x + tx) / 2 },
+      { type: 'reflection', axis: 'y', value: (y + ty) / 2 },
+      ...[90, 180, 270].map(degrees => ({ type: 'rotation', degrees, direction: 'ccw' }))
+    ];
+    return candidates.some(rule => trianglesMatch(applyTransformation(original, rule), transformed));
+  }
+
+  function generateHardProblem(firstType) {
+    if (!CATEGORIES.includes(firstType)) throw new Error('Invalid category');
+    const secondTypes = CATEGORIES.filter(type => type !== firstType);
+    for (let attempt = 0; attempt < 4000; attempt++) {
+      const first = generateProblem(firstType);
+      const secondRule = sampleRule(secondTypes[rand(0, secondTypes.length - 1)]);
+      const transformed = applyTransformation(first.transformed, secondRule);
+      if (transformed.some(point => point.some(value => Math.abs(value) > BOUNDS))) continue;
+      if (sqDistance(centroid(first.transformed), centroid(transformed)) < 9) continue;
+      if (sqDistance(centroid(first.original), centroid(transformed)) < 9) continue;
+      // Require a genuine two-step challenge, rather than a supported single rule.
+      if (mapsInOneStep(first.original, transformed)) continue;
+      return { type: 'hard', mode: 'hard', original: first.original,
+        intermediate: first.transformed, transformed, rules: [first.rule, secondRule] };
+    }
+    throw new Error('Unable to generate two-step problem');
+  }
+
   function describeRule(rule) {
     if (rule.type === 'translation') {
       const horizontal = rule.dx === 0 ? '0 horizontally' : `${Math.abs(rule.dx)} unit${Math.abs(rule.dx) === 1 ? '' : 's'} ${rule.dx > 0 ? 'right' : 'left'}`;
@@ -98,23 +128,25 @@
   }
 
   function createEmptyStats() {
-    return Object.fromEntries(CATEGORIES.map(key => [key, { correct: 0, attempted: 0 }]));
+    return Object.fromEntries(SCORE_KEYS.map(key => [key, { correct: 0, attempted: 0 }]));
   }
 
   function freshState(name = '') {
-    return { name, stats: createEmptyStats(), history: [], served: 0, focus: 'all', teacherEmail: DEFAULT_TEACHER_EMAIL };
+    return { name, stats: createEmptyStats(), history: [], served: 0, focus: 'all', mode: 'easy', teacherEmail: DEFAULT_TEACHER_EMAIL };
   }
 
   function validateSavedState(candidate) {
     if (!candidate || typeof candidate.name !== 'string' || !candidate.name.trim() || candidate.name.length > 80) return null;
     const state = freshState(candidate.name.trim());
-    for (const key of CATEGORIES) {
+    for (const key of SCORE_KEYS) {
       const row = candidate.stats && candidate.stats[key];
+      if (key === 'hard' && row === undefined) continue; // Preserve pre-mode saved scores.
       if (!row || !Number.isSafeInteger(row.correct) || !Number.isSafeInteger(row.attempted) || row.correct < 0 || row.attempted < row.correct) return null;
       state.stats[key] = { correct: row.correct, attempted: row.attempted };
     }
     state.served = Number.isSafeInteger(candidate.served) && candidate.served >= 0 ? candidate.served : 0;
     state.focus = [...CATEGORIES, 'all'].includes(candidate.focus) ? candidate.focus : 'all';
+    state.mode = candidate.mode === 'hard' ? 'hard' : 'easy';
     state.teacherEmail = typeof candidate.teacherEmail === 'string' ? candidate.teacherEmail.slice(0, 254) : DEFAULT_TEACHER_EMAIL;
     state.history = Array.isArray(candidate.history) ? candidate.history.slice(-300) : [];
     return state;
@@ -139,11 +171,16 @@
     const revealBtn = $('revealBtn');
     const teacherEmail = $('teacherEmail');
     const practiceType = $('practiceType');
+    const gameMode = $('gameMode');
+    const resetFirstBtn = $('resetFirstBtn');
     const svg = $('coordinatePlane');
     const showCoords = $('showCoords');
     let state = freshState();
     let currentProblem = null;
     let guessPoints = null;
+    let firstGuess = null;
+    let intermediatePoints = null;
+    let secondGuessSubmitted = false;
     let firstSubmitted = false;
     let solved = false;
     let mixedBag = [];
@@ -153,7 +190,7 @@
     }
 
     function sumScore() {
-      return CATEGORIES.reduce((total, key) => ({
+      return SCORE_KEYS.reduce((total, key) => ({
         correct: total.correct + state.stats[key].correct,
         attempted: total.attempted + state.stats[key].attempted
       }), { correct: 0, attempted: 0 });
@@ -166,7 +203,7 @@
       $('overallCorrect').textContent = total.correct;
       $('overallAttempted').textContent = total.attempted;
       $('overallAccuracy').textContent = percent(total.correct, total.attempted);
-      for (const key of CATEGORIES) {
+      for (const key of SCORE_KEYS) {
         const { correct, attempted } = state.stats[key];
         $(key + 'Correct').textContent = correct;
         $(key + 'Attempted').textContent = attempted;
@@ -179,6 +216,7 @@
       startPanel.hidden = true;
       gameArea.hidden = false;
       practiceType.value = state.focus;
+      gameMode.value = state.mode;
       teacherEmail.value = state.teacherEmail;
       updateScoreboard();
       newProblem();
@@ -209,8 +247,12 @@
     }
 
     function newProblem() {
-      currentProblem = generateProblem(pickCategory());
+      const category = pickCategory();
+      currentProblem = state.mode === 'hard' ? generateHardProblem(category) : { ...generateProblem(category), mode: 'easy' };
       guessPoints = null;
+      firstGuess = null;
+      intermediatePoints = null;
+      secondGuessSubmitted = false;
       firstSubmitted = false;
       solved = false;
       state.served += 1;
@@ -218,8 +260,36 @@
       showCoords.checked = false;
       $('coordinatesPanel').hidden = true;
       resetForm();
+      updateStepUI();
       drawBoard();
       save();
+    }
+
+    function updateStepUI() {
+      const hard = currentProblem.mode === 'hard';
+      $('modeLabel').textContent = hard ? 'Hard · two transformations' : 'Easy · one transformation';
+      $('graphInstructions').textContent = hard
+        ? 'Find two transformations, in order, that map the black triangle onto the red triangle. Submit Step 1 to see its result in green, then enter Step 2.'
+        : 'Find a single transformation that maps the black triangle onto the red triangle. Corresponding vertices use matching letters. Submit an answer to see your guess in green.';
+      $('answerTitle').textContent = hard ? (firstGuess ? 'Step 2 of 2' : 'Step 1 of 2') : 'Choose a transformation';
+      checkBtn.textContent = hard ? (firstGuess ? 'Check two-step answer' : 'Apply first transformation') : 'Check my answer';
+      resetFirstBtn.hidden = !hard || !firstGuess;
+      resetFirstBtn.disabled = solved;
+      $('firstStepSummary').hidden = !hard || !firstGuess;
+      $('firstStepSummary').textContent = firstGuess ? `Step 1: ${describeRule(firstGuess)} Step 2 always starts from this first result.` : '';
+      updatePracticeSettings();
+    }
+
+    function updatePracticeSettings() {
+      const hard = state.mode === 'hard';
+      $('practiceTypeLabel').textContent = hard ? 'First transformation to generate' : 'Problems to generate';
+      for (const option of practiceType.options) {
+        option.textContent = option.value === 'all' ? 'All transformations (mixed)'
+          : `${CATEGORY_NAMES[option.value]}${hard ? ' first' : 's only'}`;
+      }
+      $('practiceHelp').textContent = hard
+        ? 'Applies to the next problem. Hard problems use two different transformation types; this focus sets the first type, and the second is mixed. You may solve them using any valid pair.'
+        : 'The selection applies to your next problem. Mixed practice rotates evenly through the three categories.';
     }
 
     const svgNS = 'http://www.w3.org/2000/svg';
@@ -273,7 +343,9 @@
         svg.appendChild(defs);
         drawTriangle(guessPoints, '#16803c', 'none', false, true);
         const outside = guessPoints.some(point => point.some(value => Math.abs(value) > BOUNDS));
-        guessStatus.textContent = 'Your last submitted guess is green and dashed (A*, B*, C*).' +
+        const label = currentProblem.mode === 'hard'
+          ? (secondGuessSubmitted ? 'Your two-step result' : 'Your Step 1 result') : 'Your last submitted guess';
+        guessStatus.textContent = label + ' is green and dashed (A*, B*, C*).' +
           (outside ? ' Some or all of your guess is outside the displayed −15 to 15 grid. Show vertex coordinates to see its full position.' : '');
       }
       const coordPanel = $('coordinatesPanel');
@@ -286,6 +358,7 @@
         const columns = document.createElement('div');
         columns.className = 'coord-pair';
         const sets = [[currentProblem.original, 'black', ''], [currentProblem.transformed, 'red', '′']];
+        if (intermediatePoints && secondGuessSubmitted) sets.push([intermediatePoints, 'green', '₁']);
         if (guessPoints) sets.push([guessPoints, 'green', '*']);
         sets.forEach(([pts, color, suffix]) => {
           const col = document.createElement('div');
@@ -373,7 +446,7 @@
       feedback.hidden = false;
     }
 
-    function recordFirstAnswer(correct, guess) {
+    function recordFirstAnswer(correct, guess, reason) {
       if (firstSubmitted) return;
       firstSubmitted = true;
       const bucket = state.stats[currentProblem.type];
@@ -381,7 +454,7 @@
       if (correct) bucket.correct++;
       state.history.push({
         at: new Date().toISOString(), category: currentProblem.type,
-        firstTryCorrect: correct, guess: guess ? describeRule(guess) : 'Solution revealed'
+        firstTryCorrect: correct, guess: reason || (guess ? (Array.isArray(guess) ? guess.map(describeRule).join(' Then ') : describeRule(guess)) : 'Solution revealed')
       });
       if (state.history.length > 300) state.history.shift();
       updateScoreboard();
@@ -393,6 +466,7 @@
       checkBtn.disabled = true;
       revealBtn.disabled = true;
       nextBtn.disabled = false;
+      updateStepUI();
     }
 
     function submitAnswer(event) {
@@ -405,28 +479,64 @@
         showFeedback('Complete your answer', error.message, 'info');
         return;
       }
-      guessPoints = applyTransformation(currentProblem.original, guess);
+      const hard = currentProblem.mode === 'hard';
+      if (hard && !firstGuess) {
+        firstGuess = guess;
+        intermediatePoints = applyTransformation(currentProblem.original, guess);
+        guessPoints = intermediatePoints;
+        secondGuessSubmitted = false;
+        resetForm();
+        nextBtn.disabled = !firstSubmitted;
+        updateStepUI();
+        drawBoard();
+        showFeedback('Step 1 applied', 'The green triangle shows your first transformation. Now choose a second transformation to map that result onto the red triangle. Your complete two-step answer will be checked together. Resetting Step 1 counts this problem as missed.', 'info');
+        answerForm.querySelector('input[name="transformType"]').focus();
+        return;
+      }
+      guessPoints = applyTransformation(hard ? intermediatePoints : currentProblem.original, guess);
+      secondGuessSubmitted = hard;
       drawBoard();
       const correct = trianglesMatch(guessPoints, currentProblem.transformed);
       const onFirstTry = !firstSubmitted;
-      recordFirstAnswer(correct, guess);
+      recordFirstAnswer(correct, hard ? [firstGuess, guess] : guess);
       nextBtn.disabled = false;
       if (correct) {
         setSolved();
-        showFeedback('Correct transformation!', onFirstTry
-          ? `Great work! ${describeRule(guess)} Your first-try score increased.`
-          : `You found it! ${describeRule(guess)} This problem remains marked incorrect for first-try scoring.`, 'good');
+        const description = hard ? `Step 1: ${describeRule(firstGuess)} Step 2: ${describeRule(guess)}` : describeRule(guess);
+        showFeedback(hard ? 'Correct two-step transformation!' : 'Correct transformation!', onFirstTry
+          ? `Great work! ${description} Your first-try score increased.`
+          : `You found it! ${description} This problem remains marked incorrect for first-try scoring.`, 'good');
       } else {
         showFeedback(onFirstTry ? 'Not quite — try again.' : 'Still not a match.',
-          'The green dashed triangle shows where your guess sends the original. Your first answer is scored. You can adjust your transformation and check again, show the solution, or move to the next problem.', 'bad');
+          hard
+            ? 'The green dashed triangle shows your two-step result. Your first complete answer is scored. Retry Step 2 from the saved Step 1 result, reset Step 1, show the solution, or move to the next problem.'
+            : 'The green dashed triangle shows where your guess sends the original. Your first answer is scored. You can adjust your transformation and check again, show the solution, or move to the next problem.', 'bad');
       }
+    }
+
+    function resetFirstTransformation() {
+      if (solved || !firstGuess || currentProblem.mode !== 'hard') return;
+      recordFirstAnswer(false, firstGuess, 'First transformation reset');
+      firstGuess = null;
+      intermediatePoints = null;
+      guessPoints = null;
+      secondGuessSubmitted = false;
+      resetForm();
+      nextBtn.disabled = false;
+      updateStepUI();
+      drawBoard();
+      showFeedback('Step 1 reset — counted as missed', 'Try a new first transformation. This problem remains incorrect for first-attempt scoring, even if you solve it later. Further retries or resets will not count the same problem again.', 'info');
+      answerForm.querySelector('input[name="transformType"]').focus();
     }
 
     function revealAnswer() {
       if (solved) return;
       recordFirstAnswer(false, null);
       setSolved();
-      showFeedback('Solution', describeRule(currentProblem.rule) + ' This problem is counted as missed in your first-try score.', 'info');
+      const description = currentProblem.mode === 'hard'
+        ? `One valid solution, in order: Step 1: ${describeRule(currentProblem.rules[0])} Step 2: ${describeRule(currentProblem.rules[1])}`
+        : describeRule(currentProblem.rule);
+      showFeedback('Solution', description + ' This problem is counted as missed in your first-try score.', 'info');
     }
 
     function makeReport() {
@@ -437,9 +547,10 @@
         `Report created: ${new Date().toLocaleString()}`,
         '',
         `Overall: ${total.correct} correct out of ${total.attempted} answered (${percent(total.correct, total.attempted)})`,
-        ...CATEGORIES.map(key => `${CATEGORY_NAMES[key]}: ${state.stats[key].correct} correct out of ${state.stats[key].attempted} answered (${percent(state.stats[key].correct, state.stats[key].attempted)})`),
+        ...SCORE_KEYS.map(key => `${SCORE_NAMES[key]}: ${state.stats[key].correct} correct out of ${state.stats[key].attempted} answered (${percent(state.stats[key].correct, state.stats[key].attempted)})`),
         '',
         'Scoring: Only the first answer to each problem counts. Revealing a solution counts as incorrect.',
+        'Hard mode: The first complete two-step answer counts. Resetting Step 1 counts the problem as incorrect. Hard problems are counted once in their own row.',
         'Results are student-generated in a web browser; they are not independently verified.'
       ];
       return lines.join('\n');
@@ -503,9 +614,9 @@
       if (!canReport()) return;
       const total = sumScore();
       const headers = ['Student Name', 'Report Date', 'Overall Correct', 'Overall Answered', 'Overall Accuracy',
-        ...CATEGORIES.flatMap(key => [`${CATEGORY_NAMES[key]} Correct`, `${CATEGORY_NAMES[key]} Answered`, `${CATEGORY_NAMES[key]} Accuracy`])];
+        ...SCORE_KEYS.flatMap(key => [`${SCORE_NAMES[key]} Correct`, `${SCORE_NAMES[key]} Answered`, `${SCORE_NAMES[key]} Accuracy`])];
       const values = [state.name, new Date().toLocaleString(), total.correct, total.attempted, percent(total.correct, total.attempted),
-        ...CATEGORIES.flatMap(key => {
+        ...SCORE_KEYS.flatMap(key => {
           const row = state.stats[key];
           return [row.correct, row.attempted, percent(row.correct, row.attempted)];
         })];
@@ -528,6 +639,7 @@
       const name = studentName.value.trim().replace(/\s+/g, ' ');
       if (!name) { studentName.focus(); return; }
       state = freshState(name);
+      state.mode = $('startMode').value === 'hard' ? 'hard' : 'easy';
       mixedBag = [];
       save();
       showSession();
@@ -536,6 +648,7 @@
     answerForm.querySelectorAll('input[name="transformType"]').forEach(el => el.addEventListener('change', toggleFields));
     showCoords.addEventListener('change', drawBoard);
     revealBtn.addEventListener('click', revealAnswer);
+    resetFirstBtn.addEventListener('click', resetFirstTransformation);
     nextBtn.addEventListener('click', () => {
       newProblem();
       // The Next button becomes disabled; move focus to the new question.
@@ -544,6 +657,11 @@
     practiceType.addEventListener('change', () => {
       state.focus = practiceType.value;
       mixedBag = [];
+      save();
+    });
+    gameMode.addEventListener('change', () => {
+      state.mode = gameMode.value === 'hard' ? 'hard' : 'easy';
+      updatePracticeSettings();
       save();
     });
     teacherEmail.addEventListener('change', () => { state.teacherEmail = teacherEmail.value.trim(); save(); });
@@ -557,6 +675,9 @@
       mixedBag = [];
       currentProblem = null;
       guessPoints = null;
+      firstGuess = null;
+      intermediatePoints = null;
+      secondGuessSubmitted = false;
       startForm.reset();
       startPanel.hidden = false;
       gameArea.hidden = true;
@@ -571,7 +692,7 @@
 
   // Expose pure mathematical helpers for automated testing in Node; no server required.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { applyTransformation, trianglesMatch, generateProblem, describeRule, twiceArea, escapeCsv };
+    module.exports = { applyTransformation, trianglesMatch, generateProblem, generateHardProblem, mapsInOneStep, describeRule, twiceArea, escapeCsv };
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
