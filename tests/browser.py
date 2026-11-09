@@ -118,6 +118,12 @@ with sync_playwright() as p:
   dims=page.evaluate('({w:innerWidth,scroll:document.documentElement.scrollWidth})')
   print('layout',dims)
   assert dims['scroll']<=width
+ # The supplied local logo loads at narrow widths, with both requested footer links.
+ page.locator('#universityLogo').scroll_into_view_if_needed()
+ page.wait_for_function("document.getElementById('universityLogo').naturalWidth===600")
+ assert page.locator('#universityLink').get_attribute('href')=='https://www.salisbury.edu/'
+ assert page.locator('.author-credit a').inner_text()=='Andrew Thompson'
+ assert page.locator('.author-credit a').get_attribute('href')=='https://faculty.salisbury.edu/~awthompson/welcome.htm'
  # Keep the repository free of generated screenshots.
  page.once('dialog',lambda d:d.accept());page.locator('#newStudentBtn').click();assert page.locator('#startPanel').is_visible()
  page.reload();assert page.locator('#startPanel').is_visible()

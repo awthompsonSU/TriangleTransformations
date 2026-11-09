@@ -124,22 +124,29 @@ try:
         assert page.locator('#resetFirstBtn').is_disabled()
         scores(1, 1)
 
-        # Reset before a complete pair is explicitly one missed problem.
+        # Undoing Step 1 is free, retains the problem, and preserves first-try credit.
         next_problem()
         first, second = solve()
+        same_original = coordinates('originalTriangle')
+        same_target = coordinates('transformedTriangle')
+        number = page.locator('#problemNumber').inner_text()
         enter(first)
         page.locator('#resetFirstBtn').click()
-        scores(1, 2)
+        scores(1, 1)
         assert page.locator('#answerTitle').inner_text() == 'Step 1 of 2'
         assert page.locator('#guessTriangle').count() == 0
         assert page.locator('#resetFirstBtn').is_hidden()
-        assert page.locator('#nextBtn').is_enabled()
+        assert page.locator('#nextBtn').is_disabled()
+        assert coordinates('originalTriangle') == same_original
+        assert coordinates('transformedTriangle') == same_target
+        assert page.locator('#problemNumber').inner_text() == number
         enter(first)
         page.locator('#resetFirstBtn').click()
-        scores(1, 2)
+        scores(1, 1)
         enter(first)
         enter(second)
-        scores(1, 2)
+        scores(2, 2)
+        assert 'first-try score increased' in page.locator('#feedback').inner_text()
         assert coordinates('guessTriangle') == coordinates('transformedTriangle')
 
         # Incorrect Step 2 can be corrected without compounding the previous guess.
@@ -147,10 +154,13 @@ try:
         first, second = solve()
         enter(first)
         enter(dict(type='translation', dx=0, dy=0))
-        scores(1, 3)
+        scores(2, 3)
         assert coordinates('guessTriangle') == transform(coordinates('originalTriangle'), first)
+        page.locator('#resetFirstBtn').click()
+        scores(2, 3)
+        enter(first)
         enter(second)
-        scores(1, 3)
+        scores(2, 3)
         assert coordinates('guessTriangle') == coordinates('transformedTriangle')
         page.locator('#showCoords').check()
         assert '₁' in page.locator('#coordinatesPanel').inner_text()
@@ -159,14 +169,14 @@ try:
         # Reveal works before and after the first step and describes both rules.
         next_problem()
         page.locator('#revealBtn').click()
-        scores(1, 4)
+        scores(2, 4)
         assert 'Step 1:' in page.locator('#feedback').inner_text()
         assert 'Step 2:' in page.locator('#feedback').inner_text()
         next_problem()
         first, second = solve()
         enter(first)
         page.locator('#revealBtn').click()
-        scores(1, 5)
+        scores(2, 5)
         assert page.locator('#resetFirstBtn').is_disabled()
 
         # Ten more generated problems exercise alternate valid sequences in-browser.
@@ -174,20 +184,20 @@ try:
             next_problem()
             first, second = solve()
             enter(first)
-            scores(1+i, 5+i)
+            scores(2+i, 5+i)
             enter(second)
-            scores(2+i, 6+i)
+            scores(3+i, 6+i)
             assert coordinates('guessTriangle') == coordinates('transformedTriangle')
 
         assert page.locator('#progressStudentName').inner_text() == 'Hard Mode Student'
-        assert page.locator('#hardCorrect').inner_text() == '11'
+        assert page.locator('#hardCorrect').inner_text() == '12'
         assert page.locator('#hardAttempted').inner_text() == '15'
-        assert page.locator('#progressOverallAccuracy').inner_text() == '73%'
+        assert page.locator('#progressOverallAccuracy').inner_text() == '80%'
         page.locator('#copyProgressBtn').click()
         page.wait_for_function("document.getElementById('reportStatus').textContent.includes('Progress image copied')")
         assert page.evaluate("async () => (await navigator.clipboard.read())[0].types.includes('image/png')")
         page.reload()
-        scores(11, 15)
+        scores(12, 15)
         assert page.locator('#gameMode').input_value() == 'hard'
         assert 'Hard' in page.locator('#modeLabel').inner_text()
 
@@ -199,7 +209,10 @@ try:
         assert page.locator('#answerTitle').inner_text() == 'Step 2 of 2'
         assert 'Hard' in page.locator('#modeLabel').inner_text()
         page.locator('#resetFirstBtn').click()
-        scores(11, 16)
+        scores(12, 15)
+        assert page.locator('#nextBtn').is_disabled()
+        page.locator('#revealBtn').click()
+        scores(12, 16)
         next_problem()
         assert 'Easy' in page.locator('#modeLabel').inner_text()
         assert page.locator('#checkBtn').inner_text() == 'Check my answer'
@@ -235,6 +248,6 @@ try:
         assert 'teacherEmail' not in page.evaluate("JSON.parse(localStorage.getItem('triangle-transformations-web-v1'))")
         assert not errors, errors
         browser.close()
-        print('PASS: hard mode composition, intermediate overlay, reset penalty, retries, reveals, reports, mode changes, migration and eight viewport widths')
+        print('PASS: hard mode composition, intermediate overlay, free first-step undo, retries, reveals, reports, mode changes, migration and eight viewport widths')
 finally:
     server.shutdown()
