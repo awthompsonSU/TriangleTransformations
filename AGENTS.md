@@ -21,7 +21,7 @@ This repository is a browser-based coordinate-geometry practice game adapted fro
 - Track first-attempt correct and attempted counts for each type and overall. Invalid/unsubmitted answers must not count. A retry must never inflate the first-attempt score.
 - Hard mode applies the student's second rule to the saved Step 1 result. Accept any valid ordered pair by its final geometry; do not require the generated hidden sequence.
 - Show the green intermediate after Step 1 and the combined result after Step 2. Retrying Step 2 must not compound prior second guesses.
-- Resetting Step 1 immediately marks the Hard problem missed, once per problem. First-step submission alone is not scored; the first complete pair is scored unless reset/reveal already marked it missed. Hard problems have a separate score row and count once overall.
+- Undoing Step 1 is free: keep the same problem, clear both guesses, and do not change scores or first-attempt eligibility. Only the first submitted complete pair (or revealing the solution) scores a Hard problem. Undo after an already scored incorrect pair must not erase that first-attempt result. Hard problems have a separate row and count once overall.
 - Preserve old saved Easy-mode scores when loading sessions without Hard stats or a mode field.
 - Store name and progress locally as currently implemented unless asked to add a backend.
 
@@ -40,3 +40,7 @@ This repository is a browser-based coordinate-geometry practice game adapted fro
 ## Verification
 
 Run `node tests/geometry.cjs`, `python3 tests/browser.py`, `python3 tests/hard_browser.py`, and `python3 tests/progress_browser.py`. Browser tests need Playwright and Chromium; the application has no such runtime dependencies.
+
+## Branding and footer
+
+Match the supplied Salisbury logo's maroon/gold/white palette. Keep a local copy of the exact logo linked to https://www.salisbury.edu/ and credit app author Andrew Thompson with https://faculty.salisbury.edu/~awthompson/welcome.htm in the footer. Preserve the graph's black original, red target, and green guess colors for mathematical clarity.

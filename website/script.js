@@ -487,7 +487,7 @@
         nextBtn.disabled = !firstSubmitted;
         updateStepUI();
         drawBoard();
-        showFeedback('Step 1 applied', 'The green triangle shows your first transformation. Now choose a second transformation to map that result onto the red triangle. Your complete two-step answer will be checked together. Resetting Step 1 counts this problem as missed.', 'info');
+        showFeedback('Step 1 applied', 'The green triangle shows your first transformation. Now choose a second transformation to map that result onto the red triangle. Your complete two-step answer will be checked together. You can undo Step 1 and try a different first transformation without affecting your score.', 'info');
         answerForm.querySelector('input[name="transformType"]').focus();
         return;
       }
@@ -507,23 +507,24 @@
       } else {
         showFeedback(onFirstTry ? 'Not quite — try again.' : 'Still not a match.',
           hard
-            ? 'The green dashed triangle shows your two-step result. Your first complete answer is scored. Retry Step 2 from the saved Step 1 result, reset Step 1, show the solution, or move to the next problem.'
+            ? 'The green dashed triangle shows your two-step result. Your first complete answer is scored. Retry Step 2 from the saved Step 1 result, undo Step 1, show the solution, or move to the next problem.'
             : 'The green dashed triangle shows where your guess sends the original. Your first answer is scored. You can adjust your transformation and check again, show the solution, or move to the next problem.', 'bad');
       }
     }
 
-    function resetFirstTransformation() {
+    function undoFirstTransformation() {
       if (solved || !firstGuess || currentProblem.mode !== 'hard') return;
-      recordFirstAnswer(false, firstGuess, 'First transformation reset');
       firstGuess = null;
       intermediatePoints = null;
       guessPoints = null;
       secondGuessSubmitted = false;
       resetForm();
-      nextBtn.disabled = false;
+      nextBtn.disabled = !firstSubmitted;
       updateStepUI();
       drawBoard();
-      showFeedback('Step 1 reset — counted as missed', 'Try a new first transformation. This problem remains incorrect for first-attempt scoring, even if you solve it later. Further retries or resets will not count the same problem again.', 'info');
+      showFeedback('Step 1 undone', firstSubmitted
+        ? 'Try a new first transformation on the same problem. Undoing is free; your first complete answer has already been scored, so further attempts do not change that score.'
+        : 'Try a new first transformation on the same problem. Undoing does not affect your score. You can still earn first-attempt credit for your first complete two-step answer.', 'info');
       answerForm.querySelector('input[name="transformType"]').focus();
     }
 
@@ -617,7 +618,7 @@
         ctx.stroke();
       }
 
-      text('YOUR PROGRESS', padding, 24, 12, 700, '#7d1515');
+      text('YOUR PROGRESS', padding, 24, 12, 700, getComputedStyle(document.documentElement).getPropertyValue('--maroon').trim() || '#782b1b');
       text('Triangle Transformations', padding, 52, 24, 700);
       let y = 96;
       for (const line of nameLines) { text(line, padding, y, 18, 700); y += 26; }
@@ -744,7 +745,7 @@
     answerForm.querySelectorAll('input[name="transformType"]').forEach(el => el.addEventListener('change', toggleFields));
     showCoords.addEventListener('change', drawBoard);
     revealBtn.addEventListener('click', revealAnswer);
-    resetFirstBtn.addEventListener('click', resetFirstTransformation);
+    resetFirstBtn.addEventListener('click', undoFirstTransformation);
     nextBtn.addEventListener('click', () => {
       newProblem();
       // The Next button becomes disabled; move focus to the new question.

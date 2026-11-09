@@ -42,9 +42,9 @@ intermediate triangle after Step 1. The original Java source is preserved unchan
 The website uses **first-attempt scoring**, rather than the Java game's eventual
 correct-answer totals. An invalid form does not count; a wrong answer or reveal
 counts once; retries cannot increase the first-attempt score. In Hard mode, the
-first complete pair is scored; resetting Step 1 immediately counts the problem
-as missed, even before Step 2 is submitted. Repeated resets never count the same
-problem more than once. Hard totals have their own row and are included once in
+first complete pair is scored. Undoing Step 1 is free and keeps the same problem
+and first-attempt eligibility. Repeated undos do not count as answers. Undoing
+after an incorrect complete pair does not erase that already scored answer. Hard totals have their own row and are included once in
 the overall total, while the three transformation rows track Easy problems. Scores persist in
 that browser but are not independently verified grades.
 
@@ -120,9 +120,11 @@ Mode and focus changes never replace the current problem midway through an answe
    result, rather than compounding the previous Step 2 guess. The coordinate
    readout includes Step 1 vertices with a subscript 1 and the latest green result
    with an asterisk.
-4. To choose a different first step, use **Reset Step 1 (counts as wrong)**.
-   This marks the problem missed immediately and clears the intermediate triangle.
-   Solving it later or resetting again cannot change its first-attempt score.
+4. To choose a different first step, use **Undo Step 1 (no penalty)**.
+   This clears the intermediate triangle and returns to Step 1 of the same
+   problem without scoring an answer. You can undo repeatedly and still earn
+   first-attempt credit on your first complete pair. If you already submitted
+   an incorrect complete pair, undo remains free but does not erase that result.
 5. Revealing the solution shows one valid ordered pair and counts the problem as
    missed. Next problem clears both steps and the green triangle.
 
@@ -138,8 +140,8 @@ full values.
 The geometry suite also checks 6,000 Hard problems, all six ordered category
 pairs, independently calculated compositions, intermediate/final bounds, and
 single-step shortcuts. `tests/hard_browser.py` checks the staged entry flow,
-correct/incorrect pairs, alternative sequences, invalid second inputs, reset
-penalties, retries, reveals, mode changes, screenshot reporting, older saved-score
+correct/incorrect pairs, alternative sequences, invalid second inputs, free first-step
+undo, retries, reveals, mode changes, screenshot reporting, older saved-score
 migration, student reset, and eight desktop/mobile widths. Test dependencies are
 the same as for `tests/browser.py`. The application itself remains a standalone
 static site without test dependencies or a build process.
@@ -213,3 +215,14 @@ the Canvas pull request restores the former renderer and its vendor files;
 GitHub Pages will publish the reverted version automatically. This does not
 require changing stored scores. For a school-hosted copy, replace the uploaded
 website files with the previous version, including its `vendor/` folder.
+
+
+## Salisbury theme and author credit
+
+The page uses maroon (#782b1b), gold (#fec81e), and white sampled from the
+supplied Salisbury University logo. The original JPEG is preserved unchanged
+in `website/assets/salisbury-university-logo.jpg`. Its footer credits app author Andrew Thompson and links to
+https://faculty.salisbury.edu/~awthompson/welcome.htm. The footer logo links to
+https://www.salisbury.edu/. Keep the `assets/` folder with the HTML, CSS, and
+JavaScript when uploading to your school website. The mathematical diagrams
+retain black original, red target, and green guessed triangles.

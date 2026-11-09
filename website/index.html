@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#7d1515">
+  <meta name="theme-color" content="#782b1b">
   <meta name="description" content="Practice translations, reflections, and rotations of triangles on the coordinate plane.">
   <title>Triangle Transformations | Interactive Geometry Game</title>
   <link rel="stylesheet" href="style.css">
@@ -13,7 +13,7 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-row">
-        <div class="brand-icon" aria-hidden="true"><svg viewBox="0 0 42 42"><path d="M9 30L20 7L34 29Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M13 33L29 17L34 34Z" fill="none" stroke="#fdb728" stroke-width="2.4" stroke-linejoin="round"/></svg></div>
+        <div class="brand-icon" aria-hidden="true"><svg viewBox="0 0 42 42"><path d="M9 30L20 7L34 29Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M13 33L29 17L34 34Z" fill="none" stroke="#fec81e" stroke-width="2.4" stroke-linejoin="round"/></svg></div>
         <div><span class="eyebrow">INTERACTIVE GEOMETRY LAB</span><h1>Triangle Transformations</h1><p>See the transformation. Work out the rule. Test your answer.</p></div>
       </div>
       <span class="header-pill">Works offline <span aria-hidden="true">●</span></span>
@@ -76,7 +76,7 @@
               <div id="rotationFields" class="conditional-fields" hidden><p class="field-instruction">Rotate around the origin (0, 0).</p><div class="field-pair"><div><label for="rotateDegrees">Angle</label><select id="rotateDegrees"><option value="">Choose angle</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div><div><label for="rotateDirection">Direction</label><select id="rotateDirection"><option value="ccw">Counterclockwise</option><option value="cw">Clockwise</option></select></div></div><span class="field-help">For 180°, either direction is correct.</span></div>
               <div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
               <div class="answer-actions"><button type="submit" id="checkBtn" class="button button-primary button-full">Check my answer</button><button type="button" id="nextBtn" class="button button-secondary button-full" disabled>Next problem →</button></div>
-              <button type="button" id="resetFirstBtn" class="button button-secondary button-full" hidden>Reset Step 1 (counts as wrong)</button>
+              <button type="button" id="resetFirstBtn" class="button button-secondary button-full" hidden>Undo Step 1 (no penalty)</button>
               <button type="button" id="revealBtn" class="text-action">Show the solution (counts as missed)</button>
             </form>
           </section>
@@ -90,7 +90,7 @@
             <div class="card-heading compact-heading"><div><span class="section-kicker">YOUR PROGRESS</span><h2 id="scoreTitle">Triangle Transformations</h2></div></div>
             <div class="progress-identity"><strong id="progressStudentName"></strong><span>As of <time id="progressTimestamp"></time></span></div>
             <table class="score-table"><thead><tr><th scope="col">Type</th><th scope="col" class="num">Right</th><th scope="col" class="num">Answered</th><th scope="col" class="num">Accuracy</th></tr></thead><tbody><tr><th scope="row">Translation</th><td id="translationCorrect" class="num">0</td><td id="translationAttempted" class="num">0</td><td id="translationAccuracy" class="num">—</td></tr><tr><th scope="row">Reflection</th><td id="reflectionCorrect" class="num">0</td><td id="reflectionAttempted" class="num">0</td><td id="reflectionAccuracy" class="num">—</td></tr><tr><th scope="row">Rotation</th><td id="rotationCorrect" class="num">0</td><td id="rotationAttempted" class="num">0</td><td id="rotationAccuracy" class="num">—</td></tr><tr><th scope="row">Hard (two steps)</th><td id="hardCorrect" class="num">0</td><td id="hardAttempted" class="num">0</td><td id="hardAccuracy" class="num">—</td></tr></tbody><tfoot><tr><th scope="row">Overall</th><td id="progressOverallCorrect" class="num">0</td><td id="progressOverallAttempted" class="num">0</td><td id="progressOverallAccuracy" class="num">—</td></tr></tfoot></table>
-            <p class="field-help score-note">Each problem is scored on the <strong>first answer only</strong>. You may retry to learn, but retries do not change your score. In Hard mode, the first complete pair is scored; resetting Step 1 counts as wrong. Easy problems use the three category rows; each Hard problem counts once in its own row. Results are browser-generated and not independently verified.</p>
+            <p class="field-help score-note">Each problem is scored on the <strong>first answer only</strong>. You may retry to learn, but retries do not change your score. In Hard mode, the first complete pair is scored; undoing Step 1 does not count as an answer. Easy problems use the three category rows; each Hard problem counts once in its own row. Results are browser-generated and not independently verified.</p>
             </div>
             <div class="progress-actions">
               <button type="button" id="copyProgressBtn" class="button button-primary button-full">Copy progress image</button>
@@ -107,6 +107,17 @@
       </div>
     </div>
   </main>
-  <footer class="page-footer">Triangle Transformations · A browser-based classroom practice activity · No account or internet connection required</footer>
+  <footer class="page-footer">
+    <div class="footer-inner">
+      <a id="universityLink" class="university-link" href="https://www.salisbury.edu/" aria-label="Visit Salisbury University">
+        <img id="universityLogo" src="assets/salisbury-university-logo.jpg" alt="Salisbury University" width="600" height="600" loading="lazy">
+      </a>
+      <div class="footer-copy">
+        <p class="footer-title">Triangle Transformations</p>
+        <p class="author-credit">App author: <a href="https://faculty.salisbury.edu/~awthompson/welcome.htm">Andrew Thompson</a></p>
+        <p>A browser-based classroom practice activity.<br>No account or internet connection required.</p>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

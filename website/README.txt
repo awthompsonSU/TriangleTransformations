@@ -24,7 +24,7 @@ after its files are loaded.
 HOST IT AND LINK IT FROM YOUR HOMEPAGE
 --------------------------------------
 Upload the entire TriangleTransformationsWeb folder to your website. Keep
-index.html, style.css and script.js together. From an HTML
+index.html, style.css, script.js and the assets/ folder together. From an HTML
 homepage one directory above that folder, add:
 
 <a href="TriangleTransformationsWeb/index.html">Triangle Transformations Game</a>
@@ -73,8 +73,10 @@ incorrect response, but retries cannot increase the first-attempt score.
 The score table contains category totals and percentages for Easy problems,
 plus a separate Hard (two steps) row. Each Hard problem counts once overall.
 In Hard mode the first complete pair determines the score. A submitted first
-step alone is not scored. Resetting Step 1 immediately marks the problem missed;
-repeated resets or later correct answers cannot alter that first-attempt score.
+step alone is not scored. Undo Step 1 is free, returns to the same problem,
+and preserves first-attempt eligibility. Repeated undos do not count as answers.
+An already submitted incorrect complete pair still determines the first-attempt
+score; undoing it does not erase that scored result.
 
 STUDENT INFORMATION AND TEACHER REPORTS
 ---------------------------------------
@@ -114,7 +116,7 @@ Easy mode implements one transformation per problem, like beginner Java play.
 Hard mode implements two transformations in order, inspired by advanced Java play:
   1. Submit Step 1 to see the intermediate triangle in green.
   2. Submit Step 2 to transform that intermediate triangle, then check the pair.
-  3. Retry Step 2 from the saved first result, or reset Step 1 (counts as wrong).
+  3. Retry Step 2 from the saved first result, or freely undo Step 1 and try again on the same problem.
 Any pair mapping every corresponding vertex to the red triangle is accepted.
 The coordinate toggle shows the saved first result with subscript 1 after Step 2.
 Generated problems use two different types, keep both stages within the grid,
@@ -130,3 +132,12 @@ Data is saved in each browser rather than collected centrally. Clearing site
 data or changing devices may erase or hide saved scores. Local file URLs may
 have differing storage restrictions across browsers; hosting the complete website folder
 under HTTPS is recommended for a consistent classroom deployment.
+
+
+FOOTER AND COLORS
+-----------------
+The maroon, gold, and white theme coordinates with the Salisbury University logo.
+The logo is linked to https://www.salisbury.edu/. App author Andrew Thompson is
+credited with a link to https://faculty.salisbury.edu/~awthompson/welcome.htm.
+Keep assets/ with the website files when uploading. The graph's black, red, and
+green triangle colors retain their original meanings.
